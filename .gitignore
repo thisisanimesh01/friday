@@ -1,0 +1,17 @@
+# 🔐 Secrets
+.env
+
+# 🧠 Personal Data
+memory.json
+contacts.json
+
+# 🐍 Python
+__pycache__/
+*.pyc
+venv/
+
+# 🧾 Logs
+*.log
+
+# macOS
+.DS_Store
