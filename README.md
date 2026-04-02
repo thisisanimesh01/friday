@@ -14,7 +14,4 @@ A personal AI assistant built with Python.
 - Groq API
 - Telegram Bot API
 
-## Setup
 
-1. Clone repo
-2. Create `.env` file:
