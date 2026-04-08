@@ -1,7 +1,6 @@
 import os
 import webbrowser
 import urllib.parse
-from click import command
 import yt_dlp
 from brain import ask_friday
 from reminder import set_reminder, send_telegram_to
@@ -11,6 +10,7 @@ from memory import remember, recall
 from news import get_news
 from weather import get_weather
 from time_date import get_time, get_date, get_day
+from maps import get_distance, get_location
 
 def execute_command(command):
     command = command.lower()
@@ -135,6 +135,8 @@ def execute_command(command):
         else:
             webbrowser.open("https://youtube.com")
             return "Opening YouTube..."
+
+
     #date & time
     if "time" in command:
         return get_time()
@@ -152,6 +154,12 @@ def execute_command(command):
 
         news = get_news(query)
         return f"Here’s what’s happening right now 📰\n{news}"
+
+    #for location & distance
+    elif "where am i" in command or "my location" in command:
+        return get_location()
+    elif "distance" in command:
+        return get_distance(command)
 
     #for weather
     elif "weather" in command.lower() or "temperature" in command.lower():

@@ -5,8 +5,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-print("API KEY LOADED:", os.getenv("WEATHER_API_KEY"))  # Debug line to confirm API key is loaded
-
 API_KEY = os.getenv("WEATHER_API_KEY")
 BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
 
