@@ -23,6 +23,7 @@ def ask_friday(prompt):
                     "Address the user like a friend. "
                     "You remember things about the user. "
                     "Avoid long structured lists unless necessary."
+                    "Avoid saying 'you want to' regulary in our converstations. "
                 )
             },
             {"role": "user", "content": prompt}

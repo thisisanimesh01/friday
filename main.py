@@ -15,11 +15,13 @@ def run_friday():
             break
 
         elif result:
-            print(f"Friday: {result}")
+            print(f"friday : {result}")
 
         else:
             response = ask_friday(user_input)
             print(f"\nFriday: {response}\n")
+
+
 
 if __name__ == "__main__":
     run_friday()

@@ -1,12 +1,14 @@
 import os
 import webbrowser
 import urllib.parse
+from click import command
 import yt_dlp
 from brain import ask_friday
 from reminder import set_reminder, send_telegram_to
 from contacts import get_chat_id
 import re
 from memory import remember, recall
+from news import get_news
 
 def execute_command(command):
     command = command.lower()
@@ -61,7 +63,7 @@ def execute_command(command):
 
                 if chat_id:
                     send_telegram_to(chat_id, message)
-                    return f"Message sent to {name} "
+                    return f"Message going to {name} "
                 else:
                     return f"I don’t know {name} yet."
             else:
@@ -76,9 +78,14 @@ def execute_command(command):
             "leetcode": "https://leetcode.com/u/animeshyadav/",
             "github": "https://github.com/thisisanimesh01",
             "linkedin": "https://www.linkedin.com/in/animesh-yadav-39460b276/",
-            "instagram": "https://www.instagram.com/thisisanimesh.01/",
+            "thisianimesh01": "https://www.instagram.com/thisisanimesh.01/",
+            "naruto" : "https://www.instagram.com/pvt_narut0/",  #naruto id in chrome is pvt_narut0
             "gmail": "https://mail.google.com",
-            "outlook" : "https://outlook.office.com/mail/"
+            "outlook" : "https://outlook.office.com/mail/",
+            "brave" : "brave://newtab",
+            "whatsapp" : "whatsapp://",
+            "chess" : "https://www.chess.com/member/animeshyadav"
+
         }
 
         for site in sites:
@@ -86,6 +93,13 @@ def execute_command(command):
                 webbrowser.open(sites[site])
                 return f"Opening {site} ..."
 
+    if "launch" in command and "code" in command:
+        try:
+            os.system("code .")
+            return "Launching VS Code..."
+        except Exception as e:
+            print("DEBUG:", e)
+            return "Couldn't launch VS Code."
 
     #for youtube and google
     if "youtube" in command:
@@ -120,6 +134,20 @@ def execute_command(command):
             webbrowser.open("https://youtube.com")
             return "Opening YouTube..."
 
+    #for news
+   # 📰 NEWS
+    if "news" in command:
+        query = command.replace("news", "").strip()
+
+        if not query:
+            query = "latest"
+
+        news = get_news(query)
+        return f"Here’s what’s happening right now 📰\n{news}"
+
+
+
+    #for goole search
     elif "google" in command:
         webbrowser.open("https://google.com")
         return "Opening Google..."
