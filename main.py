@@ -1,6 +1,7 @@
 from brain import ask_friday
 from commands import execute_command
 
+
 def run_friday():
     print("\nFriday is online. What’s up?\n")
 

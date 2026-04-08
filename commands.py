@@ -9,6 +9,8 @@ from contacts import get_chat_id
 import re
 from memory import remember, recall
 from news import get_news
+from weather import get_weather
+from time_date import get_time, get_date, get_day
 
 def execute_command(command):
     command = command.lower()
@@ -133,9 +135,15 @@ def execute_command(command):
         else:
             webbrowser.open("https://youtube.com")
             return "Opening YouTube..."
+    #date & time
+    if "time" in command:
+        return get_time()
+    elif "date" in command:
+        return get_date()
+    elif "day" in command:
+        return get_day()
 
-    #for news
-   # 📰 NEWS
+   #news command
     if "news" in command:
         query = command.replace("news", "").strip()
 
@@ -145,7 +153,9 @@ def execute_command(command):
         news = get_news(query)
         return f"Here’s what’s happening right now 📰\n{news}"
 
-
+    #for weather
+    elif "weather" in command.lower() or "temperature" in command.lower():
+        return get_weather(command)
 
     #for goole search
     elif "google" in command:
@@ -157,4 +167,4 @@ def execute_command(command):
         return "exit"
 
     else:
-        return ask_friday(command)
+        return None
