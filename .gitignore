@@ -1,16 +1,16 @@
-# 🔐 Secrets
+# Secrets
 .env
 
-# 🧠 Personal Data
+# Personal Data
 memory.json
 contacts.json
 
-# 🐍 Python
+# Python
 __pycache__/
 *.pyc
 venv/
 
-# 🧾 Logs
+# Logs
 *.log
 
 # macOS

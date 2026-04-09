@@ -6,7 +6,19 @@ from dotenv import load_dotenv
 load_dotenv()
 
 API_KEY = os.getenv("NEWS_API_KEY")
-BASE_URL = "https://newsapi.org/v2/top-headlines"
+INDIAN_API_KEY = os.getenv("INDIAN_NEWS_API")
+
+TOP_HEADLINES_URL = "https://newsapi.org/v2/top-headlines"
+EVERYTHING_URL = "https://newsapi.org/v2/everything"
+
+BLOCKED_SOURCES = [
+    "menafn",
+    "prnewswire",
+    "gizmochina",
+    "startupnews",
+    "google",
+    "gyanhigyan"
+]
 
 
 def extract_number(query):
@@ -47,6 +59,88 @@ def detect_category(query):
     return None
 
 
+def fetch_indian_news_fast(params, num_articles):
+    try:
+        url = "https://newsdata.io/api/1/news"
+        response = requests.get(url, params=params, timeout=4)
+        data = response.json()
+
+        articles = data.get("results", [])
+
+        seen = set()
+        news_list = []
+
+        for article in articles:
+            title = article.get("title", "")
+            source = article.get("source_id", "").lower()
+
+            if any(bad in source for bad in BLOCKED_SOURCES):
+                continue
+
+            if not title or title in seen:
+                continue
+
+            seen.add(title)
+            news_list.append(f"{len(news_list)+1}. {title} ({source})")
+
+            if len(news_list) >= num_articles:
+                break
+
+        return news_list
+
+    except:
+        return []
+
+def fetch_newsapi(query, cleaned_query, category, num_articles, is_indian):
+    params = {
+        "apiKey": API_KEY,
+        "pageSize": num_articles * 3,
+        "sortBy": "publishedAt",
+        "language": "en"
+    }
+
+    url = EVERYTHING_URL
+
+    if is_indian:
+        search_query = "india"
+        if cleaned_query:
+            search_query += " " + cleaned_query
+        params["q"] = search_query
+
+    elif category:
+        params["q"] = category
+
+    else:
+        params["q"] = cleaned_query if cleaned_query else "latest"
+
+    response = requests.get(url, params=params, timeout=6)
+    data = response.json()
+
+    if data.get("status") != "ok":
+        print("DEBUG:", data)
+        return []
+
+    articles = data.get("articles", [])
+
+    seen = set()
+    news_list = []
+
+    for article in articles:
+        title = article.get("title", "")
+        source = article.get("source", {}).get("name", "Unknown")
+
+        if not title or title in seen:
+            continue
+
+        seen.add(title)
+        news_list.append(f"{len(news_list)+1}. {title} ({source})")
+
+        if len(news_list) >= num_articles:
+            break
+
+    return news_list
+
+
 def get_news(query="latest"):
     try:
         query = query.lower().strip()
@@ -55,97 +149,32 @@ def get_news(query="latest"):
         cleaned_query = clean_query(query)
         category = detect_category(query)
 
-        country = None
-        if "india" in query:
-            country = "in"
-        elif "us" in query or "america" in query:
-            country = "us"
+        is_indian = "india" in query or "indian" in query
 
-        params = {
-            "apiKey": API_KEY,
-            "pageSize": max(num_articles * 3, 15)
-        }
-
-        if country:
-            params["country"] = country
-        else:
-            params["language"] = "en"
-
-        if category:
-            params["category"] = category
-        elif cleaned_query:
-            params["q"] = cleaned_query
-
-        response = requests.get(BASE_URL, params=params, timeout=5)
-        data = response.json()
-
-        if data.get("status") != "ok":
-            print("DEBUG:", data)
-            return "Couldn't fetch news right now."
-
-        articles = data.get("articles", [])
-
-        if not articles and cleaned_query:
-            words = cleaned_query.split()
-
-            for word in words:
-                params.pop("category", None)
-                params["q"] = word
-
-                response = requests.get(BASE_URL, params=params, timeout=5)
-                data = response.json()
-                articles = data.get("articles", [])
-
-                if articles:
-                    break
-
-        if not articles:
-            return "No news found."
-
-        seen = set()
-        news_list = []
-
-        for article in articles:
-            title = article.get("title", "")
-
-            if not title or title in seen:
-                continue
-
-            seen.add(title)
-
-            source = article.get("source", {}).get("name", "Unknown")
-
-            news_list.append(f"{len(news_list)+1}. {title} ({source})")
-
-            if len(news_list) >= num_articles:
-                break
-
-        if len(news_list) < num_articles:
-            fallback_params = {
-                "apiKey": API_KEY,
-                "language": "en",
-                "pageSize": num_articles * 2
+        if is_indian and INDIAN_API_KEY:
+            params = {
+                "apikey": INDIAN_API_KEY,
+                "country": "in",
+                "language": "en"
             }
 
-            response = requests.get(BASE_URL, params=fallback_params, timeout=5)
-            fallback_articles = response.json().get("articles", [])
+            if category:
+                params["category"] = category
 
-            for article in fallback_articles:
-                title = article.get("title", "")
+            if cleaned_query:
+                params["q"] = cleaned_query
 
-                if not title or title in seen:
-                    continue
+            news = fetch_indian_news_fast(params, num_articles)
 
-                seen.add(title)
+            if news:
+                return "\n".join(news)
 
-                source = article.get("source", {}).get("name", "Unknown")
+        news = fetch_newsapi(query, cleaned_query, category, num_articles, is_indian)
 
-                news_list.append(f"{len(news_list)+1}. {title} ({source})")
+        if news:
+            return "\n".join(news)
 
-                if len(news_list) >= num_articles:
-                    break
-
-        return "\n".join(news_list)
+        return "Couldn't fetch news right now."
 
     except Exception as e:
         print("ERROR:", str(e))

@@ -56,7 +56,6 @@ def execute_command(command):
             "github": "https://github.com/thisisanimesh01",
             "linkedin": "https://www.linkedin.com/in/animesh-yadav-39460b276/",
             "thisianimesh01": "https://www.instagram.com/thisisanimesh.01/",
-            "naruto" : "https://www.instagram.com/pvt_narut0/",  #naruto id in chrome is pvt_narut0
             "gmail": "https://mail.google.com",
             "outlook" : "https://outlook.office.com/mail/",
             "brave" : "brave://newtab",
@@ -121,7 +120,7 @@ def execute_command(command):
         return get_day()
 
    #news command
-    if "news" in command:
+    if any(word in command for word in ["news", "headlines"]):
         query = command.replace("news", "").strip()
 
         if not query:
