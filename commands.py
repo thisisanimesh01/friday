@@ -6,11 +6,11 @@ from brain import ask_friday
 from reminder import set_reminder, send_telegram_to
 from contacts import get_chat_id
 import re
-from memory import remember, recall
 from news import get_news
 from weather import get_weather
 from time_date import get_time, get_date, get_day
 from maps import get_distance, get_location
+from memory.memory_manager import store_memory, retrieve_memory
 
 def execute_command(command):
     command = command.lower()
@@ -27,31 +27,6 @@ def execute_command(command):
             return f"Got it. I’ll remind you at {time_input}."
 
         return "Tell me the time like 18:30."
-
-    # MEMORY STORE
-    if "remember" in command:
-        try:
-            parts = command.replace("remember", "").strip().split(" is ")
-            key = parts[0].strip()
-            value = parts[1].strip()
-
-            remember(key, value)
-            return f"Got it. I’ll remember that {key} is {value}."
-        except:
-            return "Tell me like: remember my name is Animesh"
-
-    # MEMORY RECALL
-    if "what is my" in command:
-        key = command.replace("what is my", "").strip()
-        key = key.replace("?", "").strip()
-
-        full_key = f"my {key}"
-        value = recall(full_key)
-
-        if value:
-            return f"Your {key} is {value}."
-        else:
-            return "I don’t remember that yet."
 
     # for sending telegram message
     if "send" in command and "to" in command:

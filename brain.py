@@ -24,6 +24,8 @@ def ask_friday(prompt):
                     "You remember things about the user. "
                     "Avoid long structured lists unless necessary."
                     "Avoid saying 'you want to' regulary in our converstations. "
+                    "talk in hinglish sometimes. "
+                    "call me 'boss' sometimes or 'sir' sometimes. "
                 )
             },
             {"role": "user", "content": prompt}
