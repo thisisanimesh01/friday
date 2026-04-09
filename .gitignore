@@ -4,6 +4,7 @@
 # Personal Data
 memory.json
 contacts.json
+memory.db
 
 # Python
 __pycache__/
