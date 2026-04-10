@@ -2,6 +2,9 @@ import os
 from groq import Groq
 from dotenv import load_dotenv
 
+from security.permission_manager import confirm_action #for cross file confirmation handling
+from sandbox.file_manager import delete_file #for cross file deletion handling
+
 load_dotenv()
 
 client = Groq(api_key=os.getenv("API"))

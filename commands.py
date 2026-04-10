@@ -11,9 +11,55 @@ from weather import get_weather
 from time_date import get_time, get_date, get_day
 from maps import get_distance, get_location
 from memory.memory_manager import store_memory, retrieve_memory
+from sandbox.file_manager import create_file, read_file, delete_file, list_files , open_file #for file management commands
+from security.action_guard import is_dangerous   #for checking if command is dangerous
+from security.permission_manager import require_confirmation #for confirming dangerous commands
+from security.path_validator import get_safe_path #for validating file paths
+
+def extract_filename(command: str):
+    match = re.search(
+        r"(?:create|make|read|delete|remove|open|show)\s+(?:file\s+)?([\w\.\-]+)",
+        command.lower()
+    )
+    return match.group(1) if match else None
 
 def execute_command(command):
+    # Block dangerous intent
+    if is_dangerous(command):
+        return "Blocked: Dangerous command detected."
+
     command = command.lower()
+
+    filename = extract_filename(command)
+
+    if "create" in command or "make" in command:
+        return create_file(filename, "Hello from Friday v2")
+
+    elif "open" in command:
+        if not filename:
+            return "Please specify a file name."
+        return open_file(filename)
+
+    elif "read" in command or "show" in command:
+        if not filename:
+            return "Please specify a file name."
+        return read_file(filename)
+
+    elif "delete" in command or "remove" in command:
+        if not filename:
+            return "Please specify a file name."
+        try :
+            path = get_safe_path(filename)
+        except Exception as e:
+            return "Invalid file path."
+        if not os.path.exists(path):
+            return f"File '{filename}' does not exist."
+        return require_confirmation(f"delete the file '{filename}'")
+
+    elif "list files" in command or "show files" in command:
+        return list_files()
+
+    return "Command not recognized."
 
     #for reminder
     if "remind me" in command:

@@ -6,9 +6,15 @@ from memory.supabase import save_cloud
 init_db()
 
 def store_memory(user, bot):
-    text = user + " " + bot
+    if isinstance(bot, dict):
+        bot_text = bot.get("message", str(bot))
+    else:
+        bot_text = str(bot)
+
+    text = user + " " + bot_text
+
     embedding = embed(text)
-    save_local(user, bot, embedding)
+    save_local(user, bot_text, embedding)
     if is_online():
         try:
             save_cloud(user, bot, embedding)

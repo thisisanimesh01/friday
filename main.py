@@ -1,6 +1,7 @@
 import os
 import warnings
 import time
+import threading
 
 warnings.filterwarnings("ignore")
 
@@ -9,14 +10,22 @@ os.environ["TRANSFORMERS_VERBOSITY"] = "error"
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
 os.environ["HF_HUB_OFFLINE"] = "1"
+os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
+os.environ["TRANSFORMERS_NO_ADVISORY_WARNINGS"] = "1"
 
 from brain import ask_friday
-from commands import execute_command
+from commands import execute_command, extract_filename
 from memory.memory_manager import store_memory, retrieve_memory
+from sandbox.file_manager import delete_file
+from security.permission_manager import confirm_action
+
+pending_action = None
 
 
 def run_friday():
-    #adding animation
+    global pending_action
+
+    # animation
     animation = "Starting Friday..."
     for i in range(len(animation) + 1):
         print(animation[:i], end="\r")
@@ -24,17 +33,52 @@ def run_friday():
     print("friday is online! ")
 
     while True:
-        user_input = input("Admin: ")
+        user_input = input("Admin: ").strip()
+
 
         if any(word in user_input.lower() for word in ["bye", "goodbye", "see you", "exit", "quit"]):
             print("Friday: Alright, see you later 👋")
             break
 
+
+        if pending_action:
+            if confirm_action(user_input):
+                if pending_action["type"] == "delete":
+                    result = delete_file(pending_action["file"], confirm=True)
+                else:
+                    result = "Unknown pending action"
+            else:
+                result = "Action cancelled."
+
+            pending_action = None
+            print(f"\nFriday: {result}\n")
+
+            threading.Thread(target=store_memory, args=(user_input, result)).start()
+            continue
+
+
         result = execute_command(user_input)
 
         if result:
+
+            if isinstance(result, dict) and result.get("status") == "confirmation_required":
+                filename = extract_filename(user_input)
+
+                pending_action = {
+                    "type": "delete",
+                    "file": filename
+                }
+
+                print(f"\nFriday: {result['message']}\n")
+
+                threading.Thread(target=store_memory, args=(user_input, result)).start()
+                continue
+
             print(f"\nFriday: {result}\n")
-            store_memory(user_input, result)
+
+
+            threading.Thread(target=store_memory, args=(user_input, result)).start()
+
         else:
             past = retrieve_memory(user_input)
 
@@ -56,7 +100,7 @@ def run_friday():
 
             print(f"\nFriday: {response}\n")
 
-            store_memory(user_input, response)
+            threading.Thread(target=store_memory, args=(user_input, response)).start()
 
 
 if __name__ == "__main__":

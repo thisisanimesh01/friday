@@ -18,22 +18,41 @@ def init_db():
     conn.close()
 
 def save_local(user, bot, embedding):
+    import json
+
     conn = sqlite3.connect(DB)
     c = conn.cursor()
+
+    if isinstance(bot, dict):
+        bot = json.dumps(bot)
+
     c.execute(
         "INSERT INTO conversations (user, bot, embedding, synced) VALUES (?, ?, ?, 0)",
-        (user, bot, str(embedding))
+        (user, str(bot), str(embedding))
     )
+
     conn.commit()
     conn.close()
 
 def get_all():
+    import json
+
     conn = sqlite3.connect(DB)
     c = conn.cursor()
     c.execute("SELECT * FROM conversations")
     rows = c.fetchall()
     conn.close()
-    return rows
+
+    parsed_rows = []
+    for row in rows:
+        try:
+            bot = json.loads(row[2])
+        except:
+            bot = row[2]
+
+        parsed_rows.append((row[0], row[1], bot, row[3], row[4]))
+
+    return parsed_rows
 
 def get_unsynced():
     conn = sqlite3.connect(DB)
