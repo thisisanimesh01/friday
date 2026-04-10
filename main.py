@@ -1,5 +1,6 @@
 import os
 import warnings
+import time
 
 warnings.filterwarnings("ignore")
 
@@ -15,7 +16,12 @@ from memory.memory_manager import store_memory, retrieve_memory
 
 
 def run_friday():
-    print("\nFriday is online. What’s up?\n")
+    #adding animation
+    animation = "Starting Friday..."
+    for i in range(len(animation) + 1):
+        print(animation[:i], end="\r")
+        time.sleep(0.1)
+    print("friday is online! ")
 
     while True:
         user_input = input("Admin: ")
