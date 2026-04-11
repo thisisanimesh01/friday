@@ -16,11 +16,31 @@ os.environ["TRANSFORMERS_NO_ADVISORY_WARNINGS"] = "1"
 from brain import ask_friday
 from commands import execute_command, extract_filename
 from memory.memory_manager import store_memory, retrieve_memory
-from sandbox.file_manager import delete_file
+from sandbox.file_manager import delete_file, empty_trash
 from security.permission_manager import confirm_action
 
 pending_action = None
 
+def is_sensitive(text: str) -> bool:
+    text = text.lower()
+
+    sensitive_keywords = [
+        "password",
+        "pass",
+        "api_key",
+        "apikey",
+        "token",
+        "secret",
+        ".env",
+        "private",
+        "confidential",
+        "friday_workspace",
+        "ssh",
+        "key",
+        "credential"
+    ]
+
+    return any(word in text for word in sensitive_keywords)
 
 def run_friday():
     global pending_action
@@ -35,18 +55,22 @@ def run_friday():
     while True:
         user_input = input("Admin: ").strip()
 
-
         if any(word in user_input.lower() for word in ["bye", "goodbye", "see you", "exit", "quit"]):
             print("Friday: Alright, see you later 👋")
             break
 
-
         if pending_action:
             if confirm_action(user_input):
+
                 if pending_action["type"] == "delete":
                     result = delete_file(pending_action["file"], confirm=True)
+
+                elif pending_action["type"] == "empty_trash":
+                    result = empty_trash()
+
                 else:
                     result = "Unknown pending action"
+
             else:
                 result = "Action cancelled."
 
@@ -56,26 +80,41 @@ def run_friday():
             threading.Thread(target=store_memory, args=(user_input, result)).start()
             continue
 
-
+        # PRIVACY SHIELD
+        if is_sensitive(user_input):
+            print("\nFriday: ⚠️ Boss, I won’t process sensitive or private information.\n")
+            continue
         result = execute_command(user_input)
 
         if result:
 
             if isinstance(result, dict) and result.get("status") == "confirmation_required":
-                filename = extract_filename(user_input)
 
-                pending_action = {
-                    "type": "delete",
-                    "file": filename
-                }
+                command_lower = user_input.lower()
+
+                if "empty trash" in command_lower:
+                    pending_action = {
+                        "type": "empty_trash"
+                    }
+
+                elif "delete" in command_lower or "remove" in command_lower:
+                    filename = extract_filename(user_input)
+
+                    pending_action = {
+                        "type": "delete",
+                        "file": filename
+                    }
+
+                else:
+                    pending_action = None
 
                 print(f"\nFriday: {result['message']}\n")
 
                 threading.Thread(target=store_memory, args=(user_input, result)).start()
                 continue
 
-            print(f"\nFriday: {result}\n")
 
+            print(f"\nFriday: {result}\n")
 
             threading.Thread(target=store_memory, args=(user_input, result)).start()
 
@@ -101,7 +140,6 @@ def run_friday():
             print(f"\nFriday: {response}\n")
 
             threading.Thread(target=store_memory, args=(user_input, response)).start()
-
 
 if __name__ == "__main__":
     run_friday()

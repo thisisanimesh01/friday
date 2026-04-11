@@ -1,6 +1,6 @@
 import os
 
-BASE_DIR = "/Users/animeshyadav/Desktop/friday_workspace"
+BASE_DIR = "/Users/animeshyadav/Desktop/friday_workspace"  #user's workspace directory
 
 def get_safe_path(filename: str) -> str:
     # Remove any path traversal attempts
