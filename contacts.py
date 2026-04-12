@@ -1,7 +1,6 @@
 import json
 
 CONTACT_FILE = "contacts.json"
-
 def get_chat_id(name):
     try:
         with open(CONTACT_FILE, "r") as f:

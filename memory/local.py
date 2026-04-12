@@ -1,43 +1,62 @@
 import sqlite3
+import threading
+
+db_lock = threading.Lock()      #to ensure thread safety when accessing the database
 
 DB = "memory.db"
 
 def init_db():
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS conversations (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user TEXT,
-        bot TEXT,
-        embedding TEXT,
-        synced INTEGER DEFAULT 0
-    )
-    """)
-    conn.commit()
-    conn.close()
+    import sqlite3
+    import os
+
+    try:
+        conn = sqlite3.connect(DB, check_same_thread=False)
+        c = conn.cursor()
+
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS conversations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user TEXT,
+            bot TEXT,
+            embedding TEXT,
+            synced INTEGER
+        )
+        """)
+
+        conn.commit()
+        conn.close()
+
+    except sqlite3.DatabaseError:
+        os.remove(DB)
+        init_db()
 
 def save_local(user, bot, embedding):
     import json
+    import sqlite3
+    import threading
 
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
+    if not hasattr(save_local, "lock"):
+        save_local.lock = threading.Lock()
 
-    if isinstance(bot, dict):
-        bot = json.dumps(bot)
+    with save_local.lock:
+        conn = sqlite3.connect(DB, check_same_thread=False)
+        c = conn.cursor()
 
-    c.execute(
-        "INSERT INTO conversations (user, bot, embedding, synced) VALUES (?, ?, ?, 0)",
-        (user, str(bot), str(embedding))
-    )
+        if isinstance(bot, dict):
+            bot = json.dumps(bot)
 
-    conn.commit()
-    conn.close()
+        c.execute(
+            "INSERT INTO conversations (user, bot, embedding, synced) VALUES (?, ?, ?, 0)",
+            (user, str(bot), str(embedding))
+        )
+
+        conn.commit()
+        conn.close()
 
 def get_all():
     import json
 
-    conn = sqlite3.connect(DB)
+    conn = sqlite3.connect(DB, check_same_thread=False)
     c = conn.cursor()
     c.execute("SELECT * FROM conversations")
     rows = c.fetchall()

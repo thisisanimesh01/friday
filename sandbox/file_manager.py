@@ -143,3 +143,40 @@ def open_file(name: str) -> str:
         return f"Opening '{name}'..."
     except Exception as e:
         return f"Error opening file: {str(e)}"
+
+def create_folder(folder_name):
+    if ".." in folder_name:
+        return "Access denied."
+
+    path = os.path.join(BASE_DIR, folder_name)
+
+    if os.path.exists(path):
+        return f"Folder '{folder_name}' already exists."
+
+    try:
+        os.makedirs(path)
+        return f"Folder '{folder_name}' created inside workspace."
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+def delete_folder(folder_name, confirm=False):
+    path = os.path.join(BASE_DIR, folder_name)
+    trash_path = os.path.join(TRASH_DIR, folder_name)
+
+    if not os.path.exists(path):
+        return f"Folder '{folder_name}' does not exist."
+
+    if not os.path.isdir(path):
+        return f"'{folder_name}' is not a folder."
+
+    if not confirm:
+        return {
+            "status": "confirmation_required",
+            "message": f"Are you sure you want to delete the folder '{folder_name}'? (yes/no)"
+        }
+
+    try:
+        shutil.move(path, trash_path)
+        return f"Folder '{folder_name}' moved to trash."
+    except Exception as e:
+        return f"Error: {str(e)}"
