@@ -1,39 +1,157 @@
-# Friday
-A personal assistant for the terminal, built using Python and Transformers. It can perform various tasks such as opening websites, fetching news, telling jokes, and more, all through natural language commands.
+# Friday v2
 
-## Features
-- Natural language understanding and generation using Transformers.
-- Integration with various APIs for tasks like weather, news, time , location, calendar, reminders, and more.
-- Customizable commands and responses.
-- Context-aware conversations.
-- Support for multiple languages.
-- Voice input and output (future feature).
+A modular AI assistant for the terminal built with Python. Friday v2 introduces a plugin-based architecture, secure sandboxed file system, memory capabilities, and GitHub automation.
 
-# tech stack
-- Python
-- Transformers (Hugging Face)
-- Various APIs (OpenWeatherMap, NewsAPI, etc.)
-- Speech recognition and text-to-speech libraries (future feature)
+---
+
+## Overview
+
+Friday v2 is no longer just a chatbot. It is a structured command-driven assistant capable of handling system operations, managing files safely, and automating developer workflows.
+
+---
+
+## Core Features
+
+### Plugin System
+
+* Dynamic plugin loading
+* Extend functionality easily
+* GitHub plugin included (status, add, commit, push)
+
+### Secure Sandbox Environment
+
+* All file operations restricted to `friday_workspace`
+* Safe file and folder creation
+* Delete with confirmation
+* Trash system for recovery
+
+### File & Folder Management
+
+* Create, read, open, delete files
+* Create folders inside workspace
+* Restore and manage trash
+
+### GitHub Automation
+
+* `github status`
+* `github add`
+* `github commit`
+* `github push`
+
+### Memory System
+
+* Stores conversations
+* Context-aware responses
+
+### Safety Layer
+
+* Blocks sensitive data access
+* Prevents unsafe operations
+* Confirmation system for destructive actions
+
+### Built-in Utilities
+
+* Weather
+* News
+* Time & date
+* Location & distance
+* Reminders
+* Website launcher
+
+---
+
+## Tech Stack
+
+* Python
+* Transformers (Hugging Face)
+* Local memory storage (SQLite)
+* Modular plugin architecture
+* External APIs (Weather, News, Maps)
+
+---
 
 ## Installation
-1. Clone the repository:
+
 ```bash
-git clone thisisanimesh01/friday.git
+git clone https://github.com/thisisanimesh01/friday.git
 cd friday
+pip install -r requirement.txt
 ```
-2. Install the required dependencies:
+
+---
+
+## Setup
+
+Create workspace directory:
+
 ```bash
-pip install -r requirements.txt
+mkdir ~/Desktop/friday_workspace
 ```
-3. Run the assistant:
+
+---
+
+## Run
+
 ```bash
 python3 main.py
 ```
-## Usage
-- Simply type your commands in the terminal after running the assistant. For example:
-- "Open YouTube"
-- "What's the weather like today?"
-- "Tell me a joke"
-- "What's the news today?"
-- "Set a reminder for tomorrow at 10 AM"  ... and much more!
 
+---
+
+## Usage Examples
+
+### File Operations
+
+```bash
+create test.txt
+read test.txt
+delete test.txt
+```
+
+### Folder Operations
+
+```bash
+make folder demo
+delete demo
+```
+
+### GitHub Commands
+
+```bash
+github status
+github add
+github commit
+github push
+```
+
+### Utilities
+
+```bash
+open youtube
+weather in delhi
+latest news
+time
+distance between lucknow to delhi
+```
+
+---
+
+## Version
+
+* v1: Basic assistant
+* v2: Modular assistant with plugins, sandbox, and GitHub integration
+
+---
+
+## Next (v3)
+Roadmap for friday
+
+1.Scheduler + Daily Intelligence
+2.Multi-Mode System
+3.Self-Learning Command System (with user feedback)
+4.Voice Enable (female voice)
+5.System COntrol(maybe)
+
+## Author
+
+Animesh Yadav
