@@ -67,11 +67,9 @@ def handle_input(user_input):
 
     results = search_memory(user_input)
 
+    context_hint = ""
     if results:
-        combined = ""
-        for r in results:
-            combined += r + "\n"
-        return combined
+        context_hint = "\nRelevant memory:\n" + "\n".join(results)
 
     past = retrieve_memory(user_input)
 
@@ -79,7 +77,7 @@ def handle_input(user_input):
     for p in past[-10:]:
         context_text += f"User: {p[1]}\nFriday: {p[2]}\n"
 
-    enhanced_prompt = context_text + f"\nUser: {user_input}\nFriday:"
+    enhanced_prompt = context_text + context_hint + f"\nUser: {user_input}\nFriday:"
 
     response = ask_friday(enhanced_prompt)
 
@@ -187,17 +185,7 @@ def ask_friday(prompt):
     except Exception as e:
         pass
 
-    results = search_memory(prompt)
-
-    if results:
-        combined = ""
-        for r in results:
-            combined += r + "\n"
-        return combined
-
     past = retrieve_memory(prompt)
-
-    ifpast = retrieve_memory(prompt)
 
     if past:
         query = prompt.lower()
@@ -206,10 +194,18 @@ def ask_friday(prompt):
 
         query_words = [w for w in query.split() if w not in stopwords]
 
+        seen = set()
+        unique_past = []
+
+        for p in past:
+            if p[1] not in seen:
+                unique_past.append(p)
+                seen.add(p[1])
+
         best_match = None
         best_score = 0
 
-        for p in past:
+        for p in unique_past:
             sentence = p[1].lower()
 
             score = sum(1 for word in query_words if word in sentence)
