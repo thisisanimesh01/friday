@@ -87,7 +87,7 @@ def run_friday():
         user_input = input("Admin: ").strip()
 
         if any(word in user_input.lower() for word in ["bye", "goodbye", "see you", "exit", "quit"]):
-            print("Friday: Alright, see you later")
+            print("Friday: Alright, see you later 👋🏻")
             break
 
         if is_last_message_query(user_input):

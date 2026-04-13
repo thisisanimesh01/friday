@@ -185,7 +185,7 @@ def execute_command(command):
             webbrowser.open("https://youtube.com")
             return "Opening YouTube..."
 
-    if "time" in command:
+    if command in ["what time is it", "current time", "time"]:
         return get_time()
     elif "date" in command:
         return get_date()
