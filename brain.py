@@ -2,10 +2,11 @@ import os
 import requests
 from dotenv import load_dotenv
 from groq import Groq
-from memory.memory_manager import load_personality, save_personality, update_context, store_memory, retrieve_memory
+from memory.memory_manager import load_personality, save_personality, update_context, store_memory, retrieve_memory , search_memory
 from intent_parser import detect_intent, extract_filename
 from commands import execute_command
 from plugin_loader import load_plugins, handle_plugin
+
 
 load_plugins()
 load_dotenv()
@@ -64,7 +65,24 @@ def handle_input(user_input):
         store_memory(user_input, command_response)
         return command_response
 
-    response = ask_friday(user_input)
+    results = search_memory(user_input)
+
+    if results:
+        combined = ""
+        for r in results:
+            combined += r + "\n"
+        return combined
+
+    past = retrieve_memory(user_input)
+
+    context_text = ""
+    for p in past[-10:]:
+        context_text += f"User: {p[1]}\nFriday: {p[2]}\n"
+
+    enhanced_prompt = context_text + f"\nUser: {user_input}\nFriday:"
+
+    response = ask_friday(enhanced_prompt)
+
     store_memory(user_input, response)
     return response
 
@@ -135,7 +153,7 @@ def ask_friday(prompt):
         )
         return response.choices[0].message.content
     except Exception as e:
-        print("Groq Error:", e)
+        pass
 
     try:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
@@ -149,7 +167,7 @@ def ask_friday(prompt):
         res = requests.post(url, json=data).json()
         return res["candidates"][0]["content"]["parts"][0]["text"]
     except Exception as e:
-        print("Gemini Error:", e)
+        pass
 
     try:
         url = "https://api.deepseek.com/v1/chat/completions"
@@ -167,6 +185,40 @@ def ask_friday(prompt):
         res = requests.post(url, headers=headers, json=data).json()
         return res["choices"][0]["message"]["content"]
     except Exception as e:
-        print("DeepSeek Error:", e)
+        pass
 
-    return "Boss, I'm having trouble connecting to my brain right now. Later on, I'll be back stronger than ever!"
+    results = search_memory(prompt)
+
+    if results:
+        combined = ""
+        for r in results:
+            combined += r + "\n"
+        return combined
+
+    past = retrieve_memory(prompt)
+
+    ifpast = retrieve_memory(prompt)
+
+    if past:
+        query = prompt.lower()
+
+        stopwords = {"what", "is", "my", "the", "a", "an", "who", "tell", "me", "do", "did"}
+
+        query_words = [w for w in query.split() if w not in stopwords]
+
+        best_match = None
+        best_score = 0
+
+        for p in past:
+            sentence = p[1].lower()
+
+            score = sum(1 for word in query_words if word in sentence)
+
+            if score > best_score:
+                best_score = score
+                best_match = p[1]
+
+        if best_match and best_score > 0:
+            return best_match
+
+    return "I'm offline and don't have enough memory yet."

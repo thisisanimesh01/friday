@@ -8,6 +8,17 @@ import numpy as np
 
 init_db()
 
+memory_store = []
+
+rows = get_all()
+for row in rows:
+    try:
+        text = row[1]
+        emb = np.array(json.loads(row[3])) if row[3] else np.zeros(1)
+        memory_store.append((text, emb))
+    except:
+        continue
+
 MEMORY_FILE = "personality.json"
 
 DEFAULT_PERSONALITY = {
@@ -18,14 +29,13 @@ DEFAULT_PERSONALITY = {
 }
 
 
-memory_store = []
-
 def cosine_sim(a, b):
     a = np.array(a)
     b = np.array(b)
     if np.linalg.norm(a) == 0 or np.linalg.norm(b) == 0:
         return 0
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+
 
 def store_memory(user, bot):
 
@@ -34,7 +44,7 @@ def store_memory(user, bot):
     else:
         bot_text = str(bot)
 
-    text = user + " " + bot_text
+    text = user
 
     embedding = embed(text)
 
@@ -55,16 +65,16 @@ def store_memory(user, bot):
 
     sync()
 
+
 def search_memory(query):
     query_embedding = embed(query)
 
     try:
         query_embedding = np.array(query_embedding)
     except:
-        return None
+        return []
 
-    best = None
-    best_score = -1
+    scored = []
 
     for text, emb in memory_store:
         try:
@@ -72,11 +82,14 @@ def search_memory(query):
         except:
             score = 0
 
-        if score > best_score:
-            best_score = score
-            best = text
+        scored.append((score, text))
 
-    return best
+    scored.sort(reverse=True, key=lambda x: x[0])
+
+    top = [t for _, t in scored[:5]]
+
+    return top
+
 
 def retrieve_memory(query):
     rows = get_all()
@@ -84,14 +97,37 @@ def retrieve_memory(query):
     if not rows:
         return []
 
+    query_embedding = embed(query)
+
+    try:
+        query_embedding = np.array(query_embedding)
+    except:
+        return rows[-10:]
+
+    scored = []
+
+    for row in rows:
+        try:
+            emb = np.array(json.loads(row[3])) if row[3] else np.zeros(1)
+            score = cosine_sim(query_embedding, emb)
+        except:
+            score = 0
+
+        scored.append((score, row))
+
+    scored.sort(reverse=True, key=lambda x: x[0])
+
+    top_rows = [r[1] for r in scored[:10]]
+
     clean_rows = []
 
-    for row in rows[-5:]:
+    for row in top_rows:
         user_text = row[1]
         bot_text = row[2]
         clean_rows.append((None, user_text, bot_text))
 
     return clean_rows
+
 
 def load_personality():
     if not os.path.exists(MEMORY_FILE):
@@ -103,12 +139,14 @@ def load_personality():
     except:
         return DEFAULT_PERSONALITY
 
+
 def save_personality(data):
     try:
         with open(MEMORY_FILE, "w") as f:
             json.dump(data, f, indent=2)
     except:
         pass
+
 
 def update_context(user_input):
     data = load_personality()

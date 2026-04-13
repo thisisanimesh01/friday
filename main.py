@@ -176,6 +176,7 @@ def run_friday():
 
         else:
             past = retrieve_memory(user_input)
+            past = past[-10:]
 
             context = ""
             for p in past:
