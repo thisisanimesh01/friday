@@ -10,7 +10,41 @@ Friday v2 is no longer just a chatbot. It is a structured command-driven assista
 
 ---
 
+## WORKFLOW
+User Input
+    │
+    ▼
+main.py (run_friday loop)
+    │
+    ├── Sensitive Check (block secrets)
+    │
+    ├── Pending Action Check
+    │       └── (delete / trash confirmation)
+    │
+    ├── Plugin System
+    │       └── plugin_loader → github_plugin (if matched)
+    │
+    ├── Command Engine (commands.py)
+    │       ├── Folder/File operations
+    │       ├── System commands
+    │       ├── APIs (weather, news, maps)
+    │       └── Confirmation triggers
+    │
+    ├── If command handled
+    │       └── Execute → Return result
+    │
+    └── Else
+            ▼
+        Memory Retrieval
+            ▼
+        brain.py (LLM response)
+            ▼
+        Output to user
+            ▼
+        Store in memory (async)
+
 ## Core Features
+
 
 ### Plugin System
 
