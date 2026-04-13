@@ -151,7 +151,7 @@ def execute_command(command):
         except:
             return "Couldn't send message."
 
-    if any(word in command for word in ["code", "vscode", "vs code", "open code", "launch code"]):
+    if command in ["open code", "launch code", "open vs code", "launch vs code"]:
         try:
             os.system("code .")
             return "Launching VS Code..."
