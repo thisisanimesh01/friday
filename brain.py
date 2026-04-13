@@ -215,6 +215,15 @@ def ask_friday(prompt):
                 best_match = p[1]
 
         if best_match and best_score > 0:
+            words = best_match.split()
+
+            if "is" in words:
+                idx = words.index("is")
+                if idx + 1 < len(words):
+                    value = words[idx + 1].capitalize()
+
+                    return f"I think it's {value}"
+
             return best_match
 
     return "I'm offline and don't have enough memory yet."
