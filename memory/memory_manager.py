@@ -10,6 +10,8 @@ init_db()
 
 memory_store = []
 
+structured_memory = {}
+
 rows = get_all()
 for row in rows:
     try:
@@ -54,6 +56,7 @@ def store_memory(user, bot):
         embedding = np.zeros(1)
 
     memory_store.append((text, embedding))
+
 
     save_local(user, bot_text, embedding.tolist())
 

@@ -22,6 +22,22 @@ def handle_input(user_input):
 
     cleaned = user_input.lower().strip()
 
+    if "name" in cleaned:
+        rows = get_all()
+        names = []
+
+        for row in rows:
+            text = row[1]
+            words_local = text.replace(",", " ").split()
+
+            for w in words_local:
+                clean = w.replace("-", "").replace("_", "")
+                if clean.isalpha() and len(clean) > 2:
+                    names.append(w.capitalize())
+
+        if names:
+            return "I remember: " + ", ".join(sorted(set(names)))
+
     if cleaned in ["friday", "hey friday", "hi friday"]:
         response = "Yes boss, I’m here. Kya scene hai?"
         store_memory(user_input, response)
