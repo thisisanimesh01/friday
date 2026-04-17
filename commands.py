@@ -212,7 +212,7 @@ def execute_command(command):
         webbrowser.open("https://google.com")
         return "Opening Google..."
 
-    elif command.strip() in ["bye", "goodbye", "exit", "quit"]:
+    elif command.strip() in ["bye","see you",  "goodbye", "exit", "quit"]:
         return "exit"
 
     else:
