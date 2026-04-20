@@ -20,3 +20,6 @@ venv/
 
 #own brain
 brain.py
+
+# Plugins (private logic)
+plugins/
