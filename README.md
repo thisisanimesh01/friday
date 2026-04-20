@@ -13,8 +13,8 @@ Friday v2 is no longer just a chatbot. It is a structured command-driven assista
 ## NOTE
 To ensure secuity and responsible sharing, the following components are intentionally excluded from this public repository:
 
--brain.py → Core AI reasoning engine
--plugins/ → Advanced plugin implementations
+* -brain.py → Core AI reasoning engine
+* -plugins/ → Advanced plugin implementations
 
 ## WORKFLOW
 1. User inputs command in terminal
