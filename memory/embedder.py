@@ -17,7 +17,7 @@ class SuppressAll:
 
 
 with SuppressAll():
-    model = SentenceTransformer('all-MiniLM-L6-v2')
+    model = SentenceTransformer('all-MiniLM-L6-v2') # llama-3.3-13b is too large to run on most machines, so we use a smaller model for embedding
 
 
 def embed(text):

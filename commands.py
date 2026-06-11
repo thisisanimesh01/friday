@@ -72,7 +72,7 @@ def execute_command(command):
                 return f"File '{filename}' already exists."
         except:
             return "Invalid file name."
-        return create_file(filename, "Hello from Friday v2")
+        return create_file(filename, "Hello sir , its Friday v2")
 
     elif command.startswith("delete") or command.startswith("remove"):
         if not filename:
@@ -212,7 +212,7 @@ def execute_command(command):
         webbrowser.open("https://google.com")
         return "Opening Google..."
 
-    elif command.strip() in ["bye","see you",  "goodbye", "exit", "quit"]:
+    elif command.strip() in ["bye","see you", "goodbye", "exit", "quit"]:
         return "exit"
 
     else:

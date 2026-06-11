@@ -3,7 +3,7 @@ import threading
 
 db_lock = threading.Lock()      #to ensure thread safety when accessing the database
 
-DB = "memory.db"
+DB = "memory.db"   # DB to store conversations locally before syncing with cloud
 
 def init_db():
     import sqlite3
