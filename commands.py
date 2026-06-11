@@ -88,17 +88,17 @@ def execute_command(command):
         else:
             return require_confirmation(f"delete the file '{filename}'")
 
-    elif command.startswith("open"):
+    elif any(word in command for word in ["open", "go to"]):
         if not filename:
             return "Please specify a file name."
         return open_file(filename)
 
-    elif command.startswith("read") or command.startswith("show"):
+    elif any(word in command for word in ["read", "view"]):
         if not filename:
             return "Please specify a file name."
         return read_file(filename)
 
-    elif command.startswith("delete") or command.startswith("remove"):
+    elif any(word in command for word in ["delete", "remove"]):
         if not filename:
             return "Please specify a file name."
         try:
@@ -109,21 +109,21 @@ def execute_command(command):
             return f"File '{filename}' does not exist."
         return require_confirmation(f"delete the file '{filename}'")
 
-    elif "restore" in command:
+    elif any (word in command for word in ["restore", "recover"]):
         if not filename:
             return "Please specify a file name."
         return restore_file(filename)
 
-    elif "list trash" in command or "show trash" in command:
+    elif any(word in command for word in ["list trash", "show trash"]):
         return list_trash()
 
-    elif "empty trash" in command:
+    elif any (word in command for word in ["empty trash", "clear trash"]):
         return require_confirmation("empty the trash")
 
-    elif "list files" in command or "show files" in command:
+    elif any(word in command for word in ["list files", "show files"]):
         return list_files()
 
-    if "remind me" in command:
+    if any (word in command for word in ["remind me", "set reminder"]):
         match = re.search(r"(\d{1,2}:\d{2})", command)
         if match:
             time_input = match.group(1)
@@ -143,9 +143,9 @@ def execute_command(command):
 
                 if chat_id:
                     send_telegram_to(chat_id, message)
-                    return f"Message going to {name}"
+                    return f"Message sent to {name}."
                 else:
-                    return f"I don’t know {name} yet."
+                    return f"who is {name} sir?"
             else:
                 return "Put message in quotes."
         except:
