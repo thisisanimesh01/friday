@@ -50,6 +50,7 @@ def execute_command(command):
 
     command = command.lower()
 
+    #folder creation
     if "make folder" in command or "create folder" in command:
         match = re.search(r"(?:make|create)\s+folder\s+(.+)", command)
         if match:
@@ -64,7 +65,7 @@ def execute_command(command):
         web_result = open_website(command)
         if web_result:
             return web_result
-
+    #file operations
     if command.startswith("create") or command.startswith("make"):
         try:
             path = get_safe_path(filename)
@@ -132,6 +133,7 @@ def execute_command(command):
             return f"Got it. I’ll remind you at {time_input}."
         return "Tell me the time like 18:30."
 
+    #message sending
     if "send" in command and "to" in command:
         try:
             msg_match = re.search(r'"(.*?)"', command)
@@ -158,6 +160,7 @@ def execute_command(command):
         except:
             return "Couldn't launch VS Code."
 
+    #websites
     if "youtube" in command:
         query = command.replace("youtube", "").replace("play", "").strip()
 
@@ -185,6 +188,7 @@ def execute_command(command):
             webbrowser.open("https://youtube.com")
             return "Opening YouTube..."
 
+    #time, date, day
     if command in ["what time is it", "current time", "time"]:
         return get_time()
     elif "date" in command:
@@ -192,6 +196,7 @@ def execute_command(command):
     elif command.strip() == "day":
         return get_day()
 
+    #maps and location
     if any(word in command for word in ["news", "headlines"]):
         query = command.replace("news", "").strip()
         if not query:
@@ -208,6 +213,7 @@ def execute_command(command):
     elif "weather" in command or "temperature" in command:
         return get_weather(command)
 
+    #google
     elif "google" in command:
         webbrowser.open("https://google.com")
         return "Opening Google..."
