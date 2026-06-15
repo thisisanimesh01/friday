@@ -125,7 +125,7 @@ def run_friday():
             continue
 
         if is_sensitive(user_input):
-            print("\nFriday: I won’t process sensitive or private information.\n")
+            print("\nFriday: Sorry Sir, I won’t process sensitive or private information.\n")
             continue
 
         plugin_response = handle_plugin(user_input)
