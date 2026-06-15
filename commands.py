@@ -32,7 +32,7 @@ def open_website(command):
         "gmail": "https://mail.google.com",
         "outlook": "https://outlook.office.com/mail/",
         "whatsapp": "https://web.whatsapp.com",
-        "chess": "https://www.chess.com/member/animeshyadav",
+        "chess": "https://www.chess.com/home",
         "google": "https://google.com",
         "youtube": "https://youtube.com",
         "portfolio": "https://thisisanimesh01.github.io/Portfolio/",
@@ -41,7 +41,7 @@ def open_website(command):
     for site in sites:
         if site in command:
             webbrowser.open(sites[site])
-            return f"Opening {site}"
+            return f"Opening {site}..."
 
     return None
 
