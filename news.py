@@ -43,6 +43,7 @@ def clean_query(query):
     return " ".join(keywords).strip()
 
 
+#news function to fetch news based on the query given by the admin
 def detect_category(query):
     if any(word in query for word in ["tech", "technology", "ai"]):
         return "technology"
@@ -58,7 +59,7 @@ def detect_category(query):
         return "entertainment"
     return None
 
-
+#func to fetch news from the Indian news API quickly
 def fetch_indian_news_fast(params, num_articles):
     try:
         url = "https://newsdata.io/api/1/news"
