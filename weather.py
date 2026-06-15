@@ -13,7 +13,7 @@ def extract_city(query):
 
     stopwords = [
         "weather", "in", "of", "tell", "me", "what", "is",
-        "the", "current", "temperature", "today"
+        "the", "current", "temperature", "today" , "like", "how", "about"
     ]
 
     words = query.split()
