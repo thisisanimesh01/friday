@@ -1,10 +1,18 @@
+import os
+import json
+import threading
+import requests
+import numpy as np
+from dotenv import load_dotenv
+
 from memory.local import init_db, save_local, get_all
 from memory.embedder import embed
 from memory.sync import is_online, sync
 from memory.supabase import save_cloud
-import os
-import json
-import numpy as np
+from logger import get_logger
+
+load_dotenv()
+logger = get_logger("MemoryManager")
 
 init_db()
 
@@ -165,3 +173,39 @@ def update_context(user_input):
     save_personality(data)
 
     return data
+GEMINI_API_KEY = os.getenv("GEMINI_API")
+
+def summarize_conversation_worker(history_text):
+    if not GEMINI_API_KEY:
+        return
+    
+    system_prompt = "Summarize the following conversation history briefly. Capture key facts, user preferences, and ongoing tasks."
+    try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={GEMINI_API_KEY}"
+        data = {
+            "contents": [{"parts": [{"text": system_prompt + "\n\n" + history_text}]}]
+        }
+        res = requests.post(url, json=data, timeout=8).json()
+        summary = res["candidates"][0]["content"]["parts"][0]["text"]
+        
+        data_store = load_personality()
+        data_store["summary"] = summary
+        # Keep only the last 3 messages instead of letting it grow forever
+        if "history" in data_store and len(data_store["history"]) > 3:
+            data_store["history"] = data_store["history"][-3:]
+        save_personality(data_store)
+        logger.info(f"Updated conversation summary: {summary[:60]}...")
+    except Exception as e:
+        logger.error(f"Failed to generate conversation summary: {e}")
+
+def trigger_summarization():
+    data = load_personality()
+    history = data.get("history", [])
+    if len(history) > 6:
+        # trigger summarize
+        hist_text = "\n".join(history)
+        threading.Thread(target=summarize_conversation_worker, args=(hist_text,)).start()
+
+def get_current_summary():
+    data = load_personality()
+    return data.get("summary", "")

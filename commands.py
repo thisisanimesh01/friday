@@ -15,6 +15,7 @@ from sandbox.file_manager import create_folder , delete_folder
 from security.action_guard import is_dangerous
 from security.permission_manager import require_confirmation
 from security.path_validator import get_safe_path
+from llm_router import route_command
 
 def extract_filename(command: str):
     match = re.search(
@@ -49,25 +50,20 @@ def execute_command(command):
     if is_dangerous(command):
         return "Blocked: Dangerous command detected."
 
-    command = command.lower()
+    command_lower = command.lower()
+    routed = route_command(command)
+    intent = routed.get("intent", "chat")
+    args = routed.get("args", {})
 
-    #folder creation
-    if "make folder" in command or "create folder" in command:
-        match = re.search(r"(?:make|create)\s+folder\s+(.+)", command)
-        if match:
-            folder_name = match.group(1).strip()
+    if intent == "create_folder":
+        folder_name = args.get("folder_name")
+        if folder_name:
             return create_folder(folder_name)
-        else:
-            return "Please specify folder name."
+        return "Please specify folder name."
 
-    filename = extract_filename(command)
-
-    if any(word in command for word in ["open", "go to", "launch"]):
-        web_result = open_website(command)
-        if web_result:
-            return web_result
-    #file operations
-    if command.startswith("create") or command.startswith("make"):
+    elif intent == "create_file":
+        filename = args.get("filename")
+        if not filename: return "Invalid file name."
         try:
             path = get_safe_path(filename)
             if os.path.exists(path):
@@ -76,31 +72,8 @@ def execute_command(command):
             return "Invalid file name."
         return create_file(filename, "Hello sir , its Friday v2")
 
-    elif command.startswith("delete") or command.startswith("remove"):
-        if not filename:
-            return "Please specify a file or folder name."
-
-        path = os.path.join(os.path.expanduser("~/Desktop/friday_workspace"), filename)
-
-        if not os.path.exists(path):
-            return f"'{filename}' does not exist."
-
-        if os.path.isdir(path):
-            return require_confirmation(f"delete the folder '{filename}'")
-        else:
-            return require_confirmation(f"delete the file '{filename}'")
-
-    elif any(word in command for word in ["open", "go to"]):
-        if not filename:
-            return "Please specify a file name."
-        return open_file(filename)
-
-    elif any(word in command for word in ["read", "view"]):
-        if not filename:
-            return "Please specify a file name."
-        return read_file(filename)
-
-    elif any(word in command for word in ["delete", "remove"]):
+    elif intent == "delete_file":
+        filename = args.get("filename")
         if not filename:
             return "Please specify a file name."
         try:
@@ -109,69 +82,81 @@ def execute_command(command):
             return "Invalid file path."
         if not os.path.exists(path):
             return f"File '{filename}' does not exist."
-        return require_confirmation(f"delete the file '{filename}'")
+        return require_confirmation(f"delete the file '{filename}'", action_type="delete_file", target=filename)
 
-    elif any (word in command for word in ["restore", "recover"]):
+    elif intent == "delete_folder":
+        folder_name = args.get("folder_name")
+        if not folder_name:
+            return "Please specify a folder name."
+        path = os.path.join(os.path.expanduser("~/Desktop/friday_workspace"), folder_name)
+        if not os.path.exists(path):
+            return f"'{folder_name}' does not exist."
+        return require_confirmation(f"delete the folder '{folder_name}'", action_type="delete_folder", target=folder_name)
+
+    elif intent == "open_file":
+        filename = args.get("filename")
+        if not filename:
+            return "Please specify a file name."
+        return open_file(filename)
+
+    elif intent == "read_file":
+        filename = args.get("filename")
+        if not filename:
+            return "Please specify a file name."
+        return read_file(filename)
+
+    elif intent == "restore_file":
+        filename = args.get("filename")
         if not filename:
             return "Please specify a file name."
         return restore_file(filename)
 
-    elif any(word in command for word in ["list trash", "show trash"]):
+    elif intent == "list_trash":
         return list_trash()
 
-    elif any (word in command for word in ["empty trash", "clear trash"]):
-        return require_confirmation("empty the trash")
+    elif intent == "empty_trash":
+        return require_confirmation("empty the trash", action_type="empty_trash")
 
-    elif any(word in command for word in ["list files", "show files"]):
+    elif intent == "list_files":
         return list_files()
 
-    if any (word in command for word in ["remind me", "set reminder"]):
-        match = re.search(r"(\d{1,2}:\d{2})", command)
-        if match:
-            time_input = match.group(1)
-            message = command.replace(match.group(1), "").replace("remind me", "").strip()
+    elif intent == "set_reminder":
+        time_input = args.get("time")
+        message = args.get("message")
+        if time_input:
             set_reminder(time_input, message)
             return f"Got it. I’ll remind you at {time_input}."
         return "Tell me the time like 18:30."
 
-    #message sending
-    if "send" in command and "to" in command:
+    elif intent == "send_telegram":
+        name = args.get("name")
+        message = args.get("message")
+        if not name or not message:
+            return "Put message in quotes."
         try:
-            msg_match = re.search(r'"(.*?)"', command)
-            name = command.split("to")[-1].strip()
-
-            if msg_match:
-                message = msg_match.group(1)
-                chat_id = get_chat_id(name)
-
-                if chat_id:
-                    send_telegram_to(chat_id, message)
-                    return f"Message sent to {name}."
-                else:
-                    return f"who is {name} sir?"
+            chat_id = get_chat_id(name)
+            if chat_id:
+                send_telegram_to(chat_id, message)
+                return f"Message sent to {name}."
             else:
-                return "Put message in quotes."
+                return f"who is {name} sir?"
         except:
             return "Couldn't send message."
 
-    if command in ["open code", "launch code", "open vs code", "launch vs code"]:
+    elif intent == "open_code":
         try:
             os.system("code .")
             return "Launching VS Code..."
         except:
             return "Couldn't launch VS Code."
 
-    #websites
-    if "youtube" in command:
-        query = command.replace("youtube", "").replace("play", "").strip()
-
+    elif intent == "play_youtube":
+        query = args.get("query")
         if query:
             try:
                 ydl_opts = {"quiet": True, "extract_flat": True}
-
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info = ydl.extract_info(f"ytsearch:{query}", download=False)
-
                     if "entries" in info and len(info["entries"]) > 0:
                         video = info["entries"][0]
                         url = f"https://www.youtube.com/watch?v={video['id']}"
@@ -179,7 +164,6 @@ def execute_command(command):
                         return f"Playing {query} on YouTube..."
                     else:
                         raise Exception()
-
             except:
                 search_query = urllib.parse.quote(query)
                 url = f"https://www.youtube.com/results?search_query={search_query}"
@@ -189,38 +173,48 @@ def execute_command(command):
             webbrowser.open("https://youtube.com")
             return "Opening YouTube..."
 
-    #time, date, day
-    if command in ["what time is it", "current time", "time"]:
+    elif intent == "get_time":
         return get_time()
-    elif "date" in command:
+
+    elif intent == "get_date":
         return get_date()
-    elif command.strip() == "day":
+
+    elif intent == "get_day":
         return get_day()
 
-    #maps and location
-    if any(word in command for word in ["news", "headlines"]):
-        query = command.replace("news", "").strip()
+    elif intent == "get_news":
+        query = args.get("query", "latest")
         if not query:
             query = "latest"
         news = get_news(query)
         return f"Here’s what’s happening right now\n{news}"
 
-    elif "where am i" in command or "my location" in command:
+    elif intent == "get_location":
         return get_location()
 
-    elif "distance" in command:
+    elif intent == "get_weather":
+        location = args.get("location")
+        return get_weather(location if location else command)
+
+    elif intent == "get_distance":
+        from_loc = args.get("from_loc")
+        to_loc = args.get("to_loc")
+        if from_loc and to_loc:
+            return get_distance(f"{from_loc} to {to_loc}")
+        return get_distance(command)
+    
+    elif intent == "open_website":
+        website_name = args.get("website_name")
+        if website_name:
+            web_result = open_website(website_name)
+            if web_result:
+                return web_result
+        return open_website(command)
+
+    if "distance" in command_lower:
         return get_distance(command)
 
-    elif "weather" in command or "temperature" in command:
-        return get_weather(command)
-
-    #google
-    elif "google" in command:
-        webbrowser.open("https://google.com")
-        return "Opening Google..."
-
-    elif command.strip() in ["bye","see you", "goodbye", "exit", "quit"]:
+    if command_lower.strip() in ["bye","see you", "goodbye", "exit", "quit"]:
         return "exit"
 
-    else:
-        return None
+    return None

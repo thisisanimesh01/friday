@@ -1,24 +1,29 @@
-from sentence_transformers import SentenceTransformer
-import sys
 import os
+import sys
+import io
+import logging
+import warnings
 
-class SuppressAll:
-    def __enter__(self):
-        self._stdout = sys.stdout
-        self._stderr = sys.stderr
-        sys.stdout = open(os.devnull, 'w')
-        sys.stderr = open(os.devnull, 'w')
+# Mute noisy huggingface / transformers warning banners
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+warnings.filterwarnings("ignore")
+logging.getLogger("transformers").setLevel(logging.ERROR)
+logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        sys.stdout.close()
-        sys.stderr.close()
-        sys.stdout = self._stdout
-        sys.stderr = self._stderr
-
-
-with SuppressAll():
-    model = SentenceTransformer('all-MiniLM-L6-v2') # llama-3.3-13b is too large to run on most machines, so we use a smaller model for embedding
+# Suppress at Python stream level ONLY — do NOT use os.dup2 which corrupts PTY FDs
+_null = io.StringIO()
+_saved_stdout = sys.stdout
+_saved_stderr = sys.stderr
+sys.stdout = _null
+sys.stderr = _null
+try:
+    from sentence_transformers import SentenceTransformer
+    model = SentenceTransformer('all-MiniLM-L6-v2')
+finally:
+    sys.stdout = _saved_stdout
+    sys.stderr = _saved_stderr
 
 
 def embed(text):
-    return model.encode(text).tolist()
+    return model.encode(text, show_progress_bar=False).tolist()

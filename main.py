@@ -1,6 +1,7 @@
 import os
 import warnings
 import time
+import sys
 import threading
 
 warnings.filterwarnings("ignore")
@@ -15,7 +16,7 @@ os.environ["TRANSFORMERS_NO_ADVISORY_WARNINGS"] = "1"
 
 from brain import ask_friday
 from commands import execute_command, extract_filename
-from memory.memory_manager import store_memory, retrieve_memory
+from memory.memory_manager import store_memory, retrieve_memory, trigger_summarization, get_current_summary
 from sandbox.file_manager import delete_file, empty_trash, delete_folder
 from security.permission_manager import confirm_action
 from plugin_loader import load_plugins, handle_plugin
@@ -74,30 +75,44 @@ def get_last_user_message(rows):
 
 def run_friday():
     global pending_action
-
     load_plugins()
 
     animation = "Starting Friday..."
     for i in range(len(animation) + 1):
-        print(animation[:i], end="\r")
-        time.sleep(0.1)
-    print("friday is online! ")
+        print(animation[:i], end="\r", flush=True)
+        time.sleep(0.05)
+    print("friday is online!\n", flush=True)
+
+    def display_response(text: str):
+        # Standardized response formatting:
+        # - one blank line before the response
+        # - the `friday:` prefix (lower-case)
+        # - one blank line after the response so the next prompt appears on its own line
+        print(f"\nfriday: {text}\n", flush=True)
 
     while True:
-        user_input = input("Admin: ").strip()
+        try:
+            sys.stdout.flush()
+            user_input = input("admin: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            display_response("Alright, see you later 👋")
+            break
+
+        if not user_input:
+            continue
 
         exit_commands = ["bye", "goodbye", "exit", "quit"]
         if user_input.lower().strip() in exit_commands:
-            print("Friday: Alright, see you later 👋")
+            display_response("Alright, see you later 👋")
             break
 
         if is_last_message_query(user_input):
             rows = retrieve_memory(user_input)
             last_user_msg = get_last_user_message(rows)
             if last_user_msg:
-                print(f"\nFriday: You said {last_user_msg}\n")
+                display_response(f"You said {last_user_msg}")
             else:
-                print("\nFriday: You haven't said anything yet.\n")
+                display_response("You haven't said anything yet.")
             continue
 
         if pending_action:
@@ -119,18 +134,18 @@ def run_friday():
                 result = "Action cancelled."
 
             pending_action = None
-            print(f"\nFriday: {result}\n")
+            display_response(result)
 
             threading.Thread(target=store_memory, args=(user_input, result)).start()
             continue
 
         if is_sensitive(user_input):
-            print("\nFriday: Sorry Sir, I won’t process sensitive or private information.\n")
+            display_response("Sorry Sir, I won’t process sensitive or private information.")
             continue
 
         plugin_response = handle_plugin(user_input)
         if plugin_response:
-            print(f"\nFriday: {plugin_response}\n")
+            display_response(plugin_response)
             threading.Thread(target=store_memory, args=(user_input, plugin_response)).start()
             continue
 
@@ -140,51 +155,59 @@ def run_friday():
 
             if isinstance(result, dict) and result.get("status") == "confirmation_required":
 
-                command_lower = user_input.lower()
-
-                if "empty trash" in command_lower:
+                if "action_type" in result:
                     pending_action = {
-                        "type": "empty_trash"
+                        "type": result["action_type"],
+                        "file": result.get("target")
                     }
-
-                elif "delete" in command_lower or "remove" in command_lower:
-                    filename = extract_filename(user_input)
-                    path = os.path.join(os.path.expanduser("~/Desktop/friday_workspace"), filename)
-
-                    if os.path.isdir(path):
-                        pending_action = {
-                            "type": "delete_folder",
-                            "file": filename
-                        }
-                    else:
-                        pending_action = {
-                            "type": "delete_file",
-                            "file": filename
-                        }
-
                 else:
-                    pending_action = None
+                    command_lower = user_input.lower()
 
-                print(f"\nFriday: {result['message']}\n")
+                    if "empty trash" in command_lower:
+                        pending_action = {
+                            "type": "empty_trash"
+                        }
+
+                    elif "delete" in command_lower or "remove" in command_lower:
+                        filename = extract_filename(user_input)
+                        path = os.path.join(os.path.expanduser("~/Desktop/friday_workspace"), filename)
+
+                        if os.path.isdir(path):
+                            pending_action = {
+                                "type": "delete_folder",
+                                "file": filename
+                            }
+                        else:
+                            pending_action = {
+                                "type": "delete_file",
+                                "file": filename
+                            }
+
+                    else:
+                        pending_action = None
+
+                display_response(result['message'])
 
                 threading.Thread(target=store_memory, args=(user_input, result)).start()
                 continue
 
-            print(f"\nFriday: {result}\n")
+            display_response(result)
 
             threading.Thread(target=store_memory, args=(user_input, result)).start()
 
         else:
             past = retrieve_memory(user_input)
-            past = past[-10:]
+            past = past[-5:]
 
-            context = ""
+            summary = get_current_summary()
+            context = f"Context Summary: {summary}\n" if summary else ""
+
             for p in past:
                 user_text, bot_text = extract_user_bot(p)
                 context += f"User: {user_text}\nFriday: {bot_text}\n"
 
             enhanced_input = context + f"\nUser: {user_input}\nFriday:"
-
+            trigger_summarization()
             try:
                 response = ask_friday(enhanced_input)
             except:
@@ -196,7 +219,7 @@ def run_friday():
                 else:
                     response = "I'm offline and don't have enough memory yet."
 
-            print(f"\nFriday: {response}\n")
+            display_response(response)
 
             threading.Thread(target=store_memory, args=(user_input, response)).start()
 

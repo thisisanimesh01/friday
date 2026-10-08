@@ -1,25 +1,43 @@
-# Secrets
+# ── Secrets & credentials ─────────────────────────────────────────────────────
 .env
+.env.*
+*.pem
+*.key
 
-# Personal Data
-memory.json
-contacts.json
-*.db
-*.json
-
-# Python
-__pycache__/
-*.pyc
-venv/
-
-# Logs
+# ── Runtime / generated data ───────────────────────────────────────────────────
 *.log
+*.db
 
-# macOS
+# ── Personal data ─────────────────────────────────────────────────────────────
+contacts.json
+
+# ── Python cache ───────────────────────────────────────────────────────────────
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.pyo
+
+# ── Virtual environments ───────────────────────────────────────────────────────
+venv/
+.venv/
+env/
+
+# ── macOS system files ─────────────────────────────────────────────────────────
 .DS_Store
+.AppleDouble
 
-#own brain
-brain.py
+# ── IDE / editor files ─────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*~
 
-# Plugins (private logic)
-plugins/
+# ── Build / dist artifacts ─────────────────────────────────────────────────────
+dist/
+build/
+*.egg-info/
+
+# ── Test & coverage ───────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
