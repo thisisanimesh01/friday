@@ -35,7 +35,6 @@ def get_coordinates(place):
 
         return lat, lng, formatted
 
-    print("DEBUG FAILED:", data)
     return None, None, None
 
 
@@ -89,8 +88,7 @@ def get_distance(query):
 
         return f"Distance between {name1} and {name2} is {distance} km."
 
-    except Exception as e:
-        print("ERROR:", e)
+    except Exception:
         return "Something went wrong while calculating distance."
 
 

@@ -1,9 +1,12 @@
 import sqlite3
 import threading
+import os
 
-db_lock = threading.Lock()      #to ensure thread safety when accessing the database
+db_lock = threading.Lock()      # ensure thread safety when accessing the database
 
-DB = "memory.db"   # DB to store conversations locally before syncing with cloud
+# DB path anchored to project root (parent of memory/) — works regardless of CWD
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DB = os.path.join(_PROJECT_ROOT, "memory.db")
 
 def init_db():
     import sqlite3

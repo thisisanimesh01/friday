@@ -16,5 +16,11 @@ def detect_intent(text):
     if "weather" in text:
         return "weather"
 
+    # Play commands for media
+    if text.startswith("play ") and ("youtube" in text or "on youtube" in text):
+        return "play_youtube"
+    if text.startswith("play ") and ("spotify" in text or "on spotify" in text):
+        return "play_spotify"
+
     return "chat"
 

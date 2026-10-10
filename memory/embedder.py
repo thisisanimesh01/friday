@@ -19,11 +19,24 @@ sys.stdout = _null
 sys.stderr = _null
 try:
     from sentence_transformers import SentenceTransformer
-    model = SentenceTransformer('all-MiniLM-L6-v2')
+    try:
+        model = SentenceTransformer('all-MiniLM-L6-v2')
+    except Exception as e:
+        # If model cannot be loaded (no internet or HF issues), fall back to a lightweight deterministic embedder
+        model = None
+        fallback_msg = f"SentenceTransformer unavailable: {e}"
+        logging.getLogger("embedder").warning(fallback_msg)
 finally:
     sys.stdout = _saved_stdout
     sys.stderr = _saved_stderr
 
 
 def embed(text):
-    return model.encode(text, show_progress_bar=False).tolist()
+    if model:
+        return model.encode(text, show_progress_bar=False).tolist()
+    # Lightweight fallback: deterministic hashed vector
+    import hashlib
+    h = hashlib.sha256(text.encode('utf-8')).digest()
+    # convert bytes to small float list
+    vec = [((b / 255.0) - 0.5) for b in h[:32]]
+    return vec

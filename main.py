@@ -16,7 +16,7 @@ os.environ["TRANSFORMERS_NO_ADVISORY_WARNINGS"] = "1"
 
 from brain import ask_friday
 from commands import execute_command, extract_filename
-from memory.memory_manager import store_memory, retrieve_memory, trigger_summarization, get_current_summary
+from memory.memory_manager import store_memory, retrieve_memory, trigger_summarization, get_current_summary, get_rich_context
 from sandbox.file_manager import delete_file, empty_trash, delete_folder
 from security.permission_manager import confirm_action
 from plugin_loader import load_plugins, handle_plugin
@@ -139,6 +139,27 @@ def run_friday():
             threading.Thread(target=store_memory, args=(user_input, result)).start()
             continue
 
+        # Deterministic priority: media and open-site commands should be handled
+        # before plugins and before the generic sensitive filter to avoid false positives.
+        import re
+
+        # Media play explicit intents
+        m_youtube = re.match(r"(?is)^play\s+(.+?)\s+on\s+youtube\s*$", user_input)
+        m_spotify = re.match(r"(?is)^play\s+(.+?)\s+on\s+spotify\s*$", user_input)
+
+        # Open site explicit intents
+        m_open_site = re.match(r"(?is)^(open|go to|visit)\s+(youtube|spotify|github|coursera|wikipedia|google|leetcode|linkedin|instagram|gmail|outlook|whatsapp|chess|portfolio)\b", user_input)
+
+        if m_youtube or m_spotify or m_open_site:
+            # Directly handle deterministic commands to avoid plugin overrides
+            result = execute_command(user_input)
+            if result:
+                display_response(result)
+                threading.Thread(target=store_memory, args=(user_input, result), daemon=True).start()
+            else:
+                display_response(f"I couldn't complete that command.")
+            continue
+
         if is_sensitive(user_input):
             display_response("Sorry Sir, I won’t process sensitive or private information.")
             continue
@@ -196,32 +217,25 @@ def run_friday():
             threading.Thread(target=store_memory, args=(user_input, result)).start()
 
         else:
-            past = retrieve_memory(user_input)
-            past = past[-5:]
+            # Build rich context: rolling summary + recent pairs + semantic memory
+            context = get_rich_context(user_input)
+            enhanced_input = (context + "\n\n" if context else "") + f"User: {user_input}\nFriday:"
 
-            summary = get_current_summary()
-            context = f"Context Summary: {summary}\n" if summary else ""
-
-            for p in past:
-                user_text, bot_text = extract_user_bot(p)
-                context += f"User: {user_text}\nFriday: {bot_text}\n"
-
-            enhanced_input = context + f"\nUser: {user_input}\nFriday:"
             trigger_summarization()
             try:
                 response = ask_friday(enhanced_input)
-            except:
+            except Exception:
+                past = retrieve_memory(user_input)
                 if past:
-                    response = "I'm offline, but from what I remember:\n\n"
-                    for p in past:
-                        user_text, _ = extract_user_bot(p)
-                        response += f"- You said: {user_text}\n"
+                    response = "I'm having trouble reaching the AI right now. From what I remember:\n\n"
+                    for p in past[:3]:
+                        user_text, bot_text = extract_user_bot(p)
+                        response += f"- You said: \"{user_text}\" → I replied: \"{bot_text}\"\n"
                 else:
                     response = "I'm offline and don't have enough memory yet."
 
             display_response(response)
-
-            threading.Thread(target=store_memory, args=(user_input, response)).start()
+            threading.Thread(target=store_memory, args=(user_input, response), daemon=True).start()
 
 if __name__ == "__main__":
     run_friday()

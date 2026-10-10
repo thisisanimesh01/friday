@@ -118,7 +118,6 @@ def fetch_newsapi(query, cleaned_query, category, num_articles, is_indian):
     data = response.json()
 
     if data.get("status") != "ok":
-        print("DEBUG:", data)
         return []
 
     articles = data.get("articles", [])
@@ -177,6 +176,5 @@ def get_news(query="latest"):
 
         return "Couldn't fetch news right now."
 
-    except Exception as e:
-        print("ERROR:", str(e))
+    except Exception:
         return "Something went wrong while fetching news."

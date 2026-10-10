@@ -19,7 +19,7 @@ GROQ_API_KEY = os.getenv("GROQ_API")
 GEMINI_API_KEY = os.getenv("GEMINI_API")
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API")
 
-client = Groq(api_key=GROQ_API_KEY)
+client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
 def handle_input(user_input):
     context = update_context(user_input)
@@ -157,7 +157,7 @@ def ask_friday(prompt):
         "Talk in Hinglish sometimes. "
         "Don't always start the converstation with Sir or Boss. Use it occasionally. "
         "Call the user 'boss' or 'sir' occasionally."
-        "If the question is about real-time events (news, sports, current events), say clearly that you do not have real-time data instead of guessing."
+
     )
 
     messages = [
@@ -165,17 +165,18 @@ def ask_friday(prompt):
         {"role": "user", "content": prompt}
     ]
 
-    try:
-        response = client.chat.completions.create(
-            model="qwen/qwen3.8-27b",
-            messages=messages
-        )
-        content = response.choices[0].message.content
-        if "</think>" in content:
-            content = content.split("</think>")[-1].strip()
-        return content
-    except Exception as e:
-        logger.error(f"Groq API failed: {e}")
+    if client:
+        try:
+            response = client.chat.completions.create(
+                model="qwen/qwen3.8-27b",
+                messages=messages
+            )
+            content = response.choices[0].message.content
+            if "</think>" in content:
+                content = content.split("</think>")[-1].strip()
+            return content
+        except Exception as e:
+            logger.error(f"Groq API failed: {e}")
 
     try:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={GEMINI_API_KEY}"
@@ -212,42 +213,8 @@ def ask_friday(prompt):
     past = retrieve_memory(prompt)
 
     if past:
-        query = prompt.lower()
-
-        stopwords = {"what", "is", "my", "the", "a", "an", "who", "tell", "me", "do", "did"}
-
-        query_words = [w for w in query.split() if w not in stopwords]
-
-        seen = set()
-        unique_past = []
-
-        for p in past:
-            if p[1] not in seen:
-                unique_past.append(p)
-                seen.add(p[1])
-
-        best_match = None
-        best_score = 0
-
-        for p in unique_past:
-            sentence = p[1].lower()
-
-            score = sum(1 for word in query_words if word in sentence)
-
-            if score > best_score:
-                best_score = score
-                best_match = p[1]
-
-        if best_match and best_score > 0:
-            words = best_match.split()
-
-            if "is" in words:
-                idx = words.index("is")
-                if idx + 1 < len(words):
-                    value = words[idx + 1].capitalize()
-
-                    return f"I think it's {value}"
-
-            return best_match
+        # Return the most relevant stored bot response rather than mangling words
+        best = past[0]  # already ranked by embedding similarity
+        return f"I'm offline, but from what I remember: {best[2]}"
 
     return "I'm offline and don't have enough memory yet."

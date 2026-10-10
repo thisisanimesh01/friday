@@ -1,7 +1,8 @@
 import os
 import importlib
 
-PLUGIN_FOLDER = "plugins"
+_DIR = os.path.dirname(os.path.abspath(__file__))
+PLUGIN_FOLDER = os.path.join(_DIR, "plugins")
 plugins = {}
 
 

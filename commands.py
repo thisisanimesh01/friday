@@ -1,5 +1,7 @@
 import os
 import webbrowser
+import subprocess
+from logger import get_logger
 import urllib.parse
 import yt_dlp
 from reminder import set_reminder, send_telegram_to
@@ -13,7 +15,11 @@ from memory.memory_manager import store_memory, retrieve_memory
 from sandbox.file_manager import create_file, read_file, delete_file, list_files, open_file, restore_file, list_trash, empty_trash
 from sandbox.file_manager import create_folder , delete_folder
 from security.action_guard import is_dangerous
-from security.permission_manager import require_confirmation
+from security.permission_manager import require_confirmation, get_browser_for_url
+from browser_manager import open_or_reuse_tab
+from browser_manager import search_and_play_youtube, search_and_play_spotify, open_url
+
+logger = get_logger("Browser")
 from security.path_validator import get_safe_path
 from llm_router import route_command
 
@@ -27,6 +33,7 @@ def extract_filename(command: str):
 def open_website(command):
     sites = {
         "leetcode": "https://leetcode.com/u/animeshyadav/",
+        "coursera": "https://www.coursera.org",
         "github": "https://github.com/thisisanimesh01",
         "linkedin": "https://www.linkedin.com/in/animesh-yadav-39460b276/",
         "instagram": "https://www.instagram.com/thisisanimesh.01/",
@@ -34,17 +41,86 @@ def open_website(command):
         "outlook": "https://outlook.office.com/mail/",
         "whatsapp": "https://web.whatsapp.com",
         "chess": "https://www.chess.com/home",
+        "wikipedia": "https://www.wikipedia.org",
         "google": "https://google.com",
         "youtube": "https://youtube.com",
+        "spotify": "https://open.spotify.com",
         "portfolio": "https://thisisanimesh01.github.io/Portfolio/",
     }
 
+    # If command is a direct site key (from route args), prefer exact match
+    cmd_lower = command.lower().strip()
+    if cmd_lower in sites:
+        url = sites[cmd_lower]
+        # Determine browser name for message
+        browser = "Chrome" if get_browser_for_url(url) == "chrome" else "Brave"
+        open_in_preferred_browser(url)
+        return f"Opening {cmd_lower} in {browser}."
+
+    # If the command includes a known site name anywhere, open it
     for site in sites:
-        if site in command:
-            webbrowser.open(sites[site])
-            return f"Opening {site}..."
+        if site in cmd_lower:
+            url = sites[site]
+            browser = "Chrome" if get_browser_for_url(url) == "chrome" else "Brave"
+            open_in_preferred_browser(url)
+            return f"Opening {site} in {browser}."
+
+    # If the command looks like a URL, open directly
+    if cmd_lower.startswith("http://") or cmd_lower.startswith("https://"):
+        browser = "Chrome" if get_browser_for_url(command) == "chrome" else "Brave"
+        open_in_preferred_browser(command)
+        return f"Opening URL in {browser}."
 
     return None
+
+def open_in_preferred_browser(url: str) -> bool:
+    """Open `url` in the preferred browser determined by `get_browser_for_url`.
+
+    On macOS we prefer to launch the app bundle via `open -a`. Fallback to the
+    default `webbrowser.open` if the platform/command isn't available.
+    """
+    browser_pref = get_browser_for_url(url)
+    # Log routing decision (do not include API keys or sensitive tokens)
+    try:
+        host = urllib.parse.urlparse(url).hostname or url
+    except Exception:
+        host = url
+    logger.info("Browser request detected")
+    logger.info(f"Target: {host}")
+    logger.info(f"Browser selected: {browser_pref}")
+
+    try:
+        # Decide match substring for tab reuse heuristics
+        parsed = urllib.parse.urlparse(url)
+        host = parsed.hostname or url
+
+        match_sub = None
+        if "youtube.com" in host or "youtu.be" in host:
+            match_sub = "youtube.com"
+        elif "spotify" in host:
+            match_sub = "spotify"
+        elif "google" in host:
+            match_sub = "google.com"
+        elif "coursera" in host:
+            match_sub = "coursera.org"
+        elif "github" in host:
+            match_sub = "github.com"
+
+        success = open_or_reuse_tab(url, browser_pref, match_substring=match_sub)
+        if success:
+            logger.info("Executing browser action")
+            logger.info("Browser action successful")
+            return True
+        else:
+            logger.error("Browser manager reported failure")
+            return False
+    except Exception as e:
+        logger.error(f"Browser action failed: {e}")
+        try:
+            webbrowser.open(url)
+            return True
+        except Exception:
+            return False
 
 def execute_command(command):
     if is_dangerous(command):
@@ -152,7 +228,14 @@ def execute_command(command):
 
     elif intent == "play_youtube":
         query = args.get("query")
+        # If query is not provided by router, try to extract from command
+        if not query:
+            m = re.search(r"(?is)play\s+(.+?)\s+on\s+youtube", command)
+            if m:
+                query = m.group(1).strip()
+
         if query:
+            # Prefer resolving via yt_dlp to a watch URL (more reliable than DOM clicks)
             try:
                 ydl_opts = {"quiet": True, "extract_flat": True}
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -160,17 +243,28 @@ def execute_command(command):
                     if "entries" in info and len(info["entries"]) > 0:
                         video = info["entries"][0]
                         url = f"https://www.youtube.com/watch?v={video['id']}"
-                        webbrowser.open(url)
-                        return f"Playing {query} on YouTube..."
-                    else:
-                        raise Exception()
-            except:
-                search_query = urllib.parse.quote(query)
-                url = f"https://www.youtube.com/results?search_query={search_query}"
-                webbrowser.open(url)
-                return "Error playing video, showing results instead."
+                        try:
+                            from browser_manager import play_youtube_watch
+                            ok, status = play_youtube_watch(url, browser_pref="brave")
+                            if ok:
+                                return f"Playing {query} on YouTube."
+                            else:
+                                if status == "playback_blocked_or_not_started":
+                                    return "YouTube opened the video, but playback was blocked by the browser."
+                                # else fallthrough to open search results
+                        except Exception:
+                            # If helper not available or failed, fall back to opening URL
+                            open_in_preferred_browser(url)
+                            return f"Playing {query} on YouTube."
+            except Exception:
+                pass
+            # Fallback: open search results page in Brave
+            search_query = urllib.parse.quote(query)
+            url = f"https://www.youtube.com/results?search_query={search_query}"
+            open_in_preferred_browser(url)
+            return "Opening YouTube search results."
         else:
-            webbrowser.open("https://youtube.com")
+            open_in_preferred_browser("https://youtube.com")
             return "Opening YouTube..."
 
     elif intent == "get_time":
@@ -202,7 +296,7 @@ def execute_command(command):
         if from_loc and to_loc:
             return get_distance(f"{from_loc} to {to_loc}")
         return get_distance(command)
-    
+
     elif intent == "open_website":
         website_name = args.get("website_name")
         if website_name:
@@ -210,6 +304,34 @@ def execute_command(command):
             if web_result:
                 return web_result
         return open_website(command)
+
+    elif intent == "play_spotify":
+        query = args.get("query")
+        if not query:
+            m = re.search(r"play\s+(.+?)\s+(?:on\s+)?spotify", command, re.IGNORECASE)
+            if m:
+                query = m.group(1).strip()
+
+        # Open Spotify web player and search for query
+        if query:
+            ok = search_and_play_spotify(query)
+            if ok:
+                return f"Playing {query} on Spotify."
+            else:
+                url = f"https://open.spotify.com/search/{urllib.parse.quote(query)}"
+                open_in_preferred_browser(url)
+                return "Opening Spotify search results."
+        else:
+            open_in_preferred_browser("https://open.spotify.com")
+            return "Opening Spotify in Brave."
+
+    elif intent == "terminal_command":
+        cmd = args.get("command", command)
+        return (
+            f"I see you typed a terminal command: `{cmd}`. "
+            "Friday doesn't execute raw shell commands directly for safety. "
+            "Run it in your terminal, or ask me to do a specific action like creating/deleting files."
+        )
 
     if "distance" in command_lower:
         return get_distance(command)

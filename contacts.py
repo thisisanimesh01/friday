@@ -1,6 +1,8 @@
 import json
+import os
 
-CONTACT_FILE = "contacts.json"
+_DIR = os.path.dirname(os.path.abspath(__file__))
+CONTACT_FILE = os.path.join(_DIR, "contacts.json")
 def get_chat_id(name):
     try:
         with open(CONTACT_FILE, "r") as f:

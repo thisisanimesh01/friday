@@ -40,9 +40,8 @@ def get_weather(query="weather"):
         response = requests.get(BASE_URL, params=params, timeout=5)
         data = response.json()
 
-        # Debug if needed
+        # If API returned an error
         if data.get("cod") != 200:
-            print("DEBUG:", data)
             return f"Couldn't find weather for {city}."
 
         name = data["name"]
@@ -61,6 +60,5 @@ def get_weather(query="weather"):
             f"Wind Speed: {wind_speed} m/s"
         )
 
-    except Exception as e:
-        print("ERROR:", str(e))
+    except Exception:
         return "Something went wrong while fetching weather."
