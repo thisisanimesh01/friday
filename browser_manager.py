@@ -145,7 +145,7 @@ end tell'''
                 h = urllib.parse.urlparse(url).hostname or ''
                 if h.startswith('www.'):
                     h = h[4:]
-                if h.lower() == target_host.lower() or target_host.lower() in h.lower():
+                if h.lower() == target_host.lower():
                     # Activate this tab explicitly
                     act = f'''tell application "{app_name}"
   tell window {wi} to set active tab index to {ti}
@@ -244,7 +244,7 @@ def open_url(url: str, browser_pref: str, match_substring: str = None) -> bool:
 
 
 def search_and_play_youtube(query: str) -> bool:
-    """Search YouTube for query in Brave, reuse tab if present, then click first result."""
+    """Search YouTube for query in Brave, reuse tab if present, then open first result via keyboard."""
     browser_pref = "brave"
     app_name = "Brave Browser"
     if not is_app_installed(app_name):
@@ -256,24 +256,40 @@ def search_and_play_youtube(query: str) -> bool:
     if not opened:
         return False
 
-    click_js = (
-        "(function(){var sels=['ytd-video-renderer a#thumbnail','a#video-title','ytd-rich-item-renderer a#video-title','ytd-video-renderer a#video-title'];"
-        "for(var i=0;i<sels.length;i++){var el=document.querySelector(sels[i]); if(el){el.click(); return 'clicked';}} return 'notfound';})()"
+    # Wait for search results to load
+    time.sleep(3.0)
+
+    # Try clicking the first result via JS to get the watch URL, then navigate directly
+    get_url_js = (
+        "(function(){"
+        "var sels=['ytd-video-renderer a#thumbnail','ytd-video-renderer a#video-title',"
+        "'ytd-rich-item-renderer a#video-title','a#video-title'];"
+        "for(var i=0;i<sels.length;i++){var el=document.querySelector(sels[i]);"
+        "if(el&&el.href){return el.href;}}"
+        "return 'notfound';"
+        "})()"
     )
 
+    watch_url = None
     for attempt in range(5):
-        res = execute_js_in_active_tab(app_name, click_js)
-        if res and 'clicked' in res.lower():
-            logger.info("YouTube: clicked first result")
-            return True
-        time.sleep(0.6)
+        res = execute_js_in_active_tab(app_name, get_url_js)
+        if res and "youtube.com/watch" in res:
+            watch_url = res.strip()
+            logger.info(f"YouTube: found watch URL: {watch_url}")
+            break
+        time.sleep(1.0)
 
-    logger.error("YouTube: failed to click first result")
+    if watch_url:
+        return play_youtube_watch(watch_url, browser_pref)[0]
+
+    logger.error("YouTube: failed to find first result URL")
     return False
 
 
 def search_and_play_spotify(query: str) -> bool:
-    """Search Spotify web player in Brave and attempt to play the first result."""
+    """Search Spotify web player in Brave and attempt to play the first result.
+    Uses longer waits for React SPA and AppleScript keystrokes for play (avoids autoplay policy).
+    """
     browser_pref = "brave"
     app_name = "Brave Browser"
     if not is_app_installed(app_name):
@@ -285,43 +301,62 @@ def search_and_play_spotify(query: str) -> bool:
     if not opened:
         return False
 
-    nav_js = """(function(){var a=document.querySelector('a[href*="/track/"]'); if(a){window.location=a.href; return 'navigated';} return 'notfound';})()"""
-    time.sleep(0.6)
-    res = execute_js_in_active_tab(app_name, nav_js)
-    if res and 'navigated' in res.lower():
-        time.sleep(0.6)
-        play_js = """(function(){var sels=['button[aria-label^="Play"]','button[aria-label*="Play"]','button[data-testid="play-button"]','button[class*="play"]','div[role=button][aria-label*="Play"]'];for(var i=0;i<sels.length;i++){try{var el=document.querySelector(sels[i]); if(el){el.click(); return 'clicked';}}catch(e){} } return 'notfound';})()"""
-        for _ in range(6):
-            p = execute_js_in_active_tab(app_name, play_js)
-            if p and 'clicked' in p.lower():
-                logger.info("Spotify: play clicked on track page")
-                time.sleep(0.6)
-                if _verify_spotify_playback(app_name):
-                    return True
-                else:
-                    logger.info("Spotify: play clicked but playback not detected")
-                    return False
-            time.sleep(0.6)
+    # Wait for Spotify React SPA to render search results (needs 3-5s)
+    time.sleep(4.0)
 
-    click_js = """(function(){var row=document.querySelector('div[role="row"] a[href*="/track/"]'); if(row){row.click(); return 'clicked';} var a=document.querySelector('a[href*="/track/"]'); if(a){a.click(); return 'clicked';} return 'notfound';})()"""
-    for attempt in range(6):
-        res2 = execute_js_in_active_tab(app_name, click_js)
-        if res2 and 'clicked' in res2.lower():
-            logger.info("Spotify: clicked track link")
-            time.sleep(0.6)
-            play_js_2 = """(function(){var b=document.querySelector('button[aria-label^="Play"]'); if(b){b.click(); return 'clicked';} return 'notfound';})()"""
-            p2 = execute_js_in_active_tab(app_name, play_js_2)
-            if p2 and 'clicked' in p2.lower():
-                time.sleep(0.6)
-                if _verify_spotify_playback(app_name):
-                    return True
-                else:
-                    logger.info("Spotify: clicked play but playback not detected")
-                    return False
-        time.sleep(0.6)
+    # Try to get the first track URL and navigate directly to it
+    get_track_js = (
+        "(function(){"
+        "var sels=['a[href*=\"/track/\"]','div[data-testid=\"tracklist-row\"] a','[data-testid=\"internal-track-link\"]'];"
+        "for(var i=0;i<sels.length;i++){var el=document.querySelector(sels[i]);"
+        "if(el&&el.href&&el.href.includes('/track/')){return el.href;}}"
+        "return 'notfound';"
+        "})()"
+    )
+
+    track_url = None
+    for attempt in range(5):
+        res = execute_js_in_active_tab(app_name, get_track_js)
+        if res and "/track/" in res and "notfound" not in res:
+            track_url = res.strip()
+            logger.info(f"Spotify: found track URL: {track_url}")
+            break
+        time.sleep(1.0)
+
+    if track_url:
+        # Navigate directly to track page
+        safe_url = track_url.replace('"', '\\"')
+        nav_script = f'tell application "{app_name}" to tell front window to tell active tab to set URL to "{safe_url}"'
+        _run_cmd(["osascript", "-e", nav_script])
+        time.sleep(3.0)  # Wait for track page to load
+
+    # Use AppleScript Space keystroke — Spotify's play shortcut, counts as user gesture
+    play_keystroke_script = f'''tell application "{app_name}"
+  activate
+  delay 0.5
+end tell
+tell application "System Events"
+  tell process "{app_name}"
+    key code 49
+  end tell
+end tell'''
+    _run_cmd(["osascript", "-e", play_keystroke_script])
+    time.sleep(2.0)
+
+    if _verify_spotify_playback(app_name):
+        logger.info("Spotify: playback verified after keystroke")
+        return True
+
+    # Second attempt — press Space again
+    _run_cmd(["osascript", "-e", play_keystroke_script])
+    time.sleep(2.0)
+    if _verify_spotify_playback(app_name):
+        logger.info("Spotify: playback verified after second keystroke")
+        return True
 
     logger.error("Spotify: failed to find or play track via web player")
     return False
+
 
 
 def _verify_spotify_playback(app_name: str) -> bool:
@@ -355,67 +390,66 @@ def _verify_spotify_playback(app_name: str) -> bool:
 
 
 def play_youtube_watch(url: str, browser_pref: str = "brave") -> tuple[bool, str]:
-    """Open a YouTube watch URL in the given browser, attempt to start playback,
-    and verify playback state. Returns (success, status_message).
+    """Open a YouTube watch URL, trigger playback via keystroke k (avoids autoplay-policy block),
+    and verify via video element state. Returns (success, status_message).
     """
+    import json as _json
     app_name = "Google Chrome" if browser_pref == "chrome" else "Brave Browser"
     if not is_app_installed(app_name):
         logger.error(f"Requested browser not installed: {app_name}")
         return False, "browser_not_installed"
 
-    opened = open_or_reuse_tab(url, browser_pref, match_substring="youtube.com/watch")
+    opened = open_or_reuse_tab(url, browser_pref, match_substring="youtube.com")
     if not opened:
         return False, "open_failed"
 
-    play_js = '''(function(){try{var v=document.querySelector('video'); if(!v){return 'no_video';} v.play(); return JSON.stringify({paused:v.paused, currentTime: v.currentTime});}catch(e){return 'error:'+e.toString();}})()'''
+    # Wait for the YouTube player to fully load
+    time.sleep(3.5)
 
-    for attempt in range(6):
-        res = execute_js_in_active_tab(app_name, play_js)
-        if not res:
-            time.sleep(0.6)
-            continue
-        r = res.strip()
-        if r.startswith('no_video'):
-            logger.debug("YouTube: no video element found yet")
-            time.sleep(0.6)
-            continue
-        if r.startswith('error:'):
-            logger.debug(f"YouTube play attempt error: {r}")
-            time.sleep(0.6)
-            continue
+    # Check if video element is already playing (autoplay may have worked)
+    check_js = "(function(){var v=document.querySelector('video'); if(!v) return 'no_video'; return JSON.stringify({paused:v.paused,currentTime:v.currentTime});})()"
+    res = execute_js_in_active_tab(app_name, check_js)
+    if res and res.startswith('{'):
         try:
-            if r.startswith('{'):
-                import json
-                info = json.loads(r)
-                paused = info.get('paused')
-                current = float(info.get('currentTime', 0) or 0)
-                if paused is False and current > 0:
-                    logger.info("YouTube: playback verified via video element")
-                    return True, "playing"
-                else:
-                    logger.debug(f"YouTube: video present but paused={paused} current={current}")
-                    click_js = "(function(){var btn=document.querySelector('button.ytp-large-play-button'); if(btn){btn.click(); return 'clicked';} var v=document.querySelector('video'); if(v){v.play(); return 'played';} return 'no_trigger';})()"
-                    execute_js_in_active_tab(app_name, click_js)
-                    time.sleep(0.6)
-            else:
-                time.sleep(0.6)
-        except Exception as e:
-            logger.debug(f"YouTube: parse/playback check failed: {e}")
-            time.sleep(0.6)
-
-    check_js = "(function(){var v=document.querySelector('video'); if(!v) return 'no_video'; return JSON.stringify({paused:v.paused, currentTime:v.currentTime});})()"
-    final = execute_js_in_active_tab(app_name, check_js)
-    if final and final.startswith('{'):
-        try:
-            import json
-            info = json.loads(final)
-            paused = info.get('paused')
-            current = float(info.get('currentTime', 0) or 0)
-            if paused is False and current > 0:
-                logger.info("YouTube: final check indicates playback")
+            info = _json.loads(res)
+            if info.get('paused') is False and float(info.get('currentTime', 0) or 0) > 0:
+                logger.info("YouTube: already playing")
                 return True, "playing"
         except Exception:
             pass
 
-    logger.info("YouTube: playback not detected after attempts")
-    return False, "playback_blocked_or_not_started"
+    # Send keystroke "k" to toggle play/pause — this IS a user gesture in Chromium
+    keystroke_script = f'''tell application "{app_name}"
+  activate
+  delay 0.3
+end tell
+tell application "System Events"
+  tell process "{app_name}"
+    keystroke "k"
+  end tell
+end tell'''
+    _run_cmd(["osascript", "-e", keystroke_script])
+    time.sleep(1.5)
+
+    # Verify playback state
+    for _ in range(4):
+        res2 = execute_js_in_active_tab(app_name, check_js)
+        if res2 and res2.startswith('{'):
+            try:
+                info2 = _json.loads(res2)
+                paused = info2.get('paused')
+                current = float(info2.get('currentTime', 0) or 0)
+                if paused is False and current > 0:
+                    logger.info("YouTube: playback verified via keystroke k")
+                    return True, "playing"
+                elif paused is True:
+                    # Video loaded but paused — try pressing k again
+                    _run_cmd(["osascript", "-e", keystroke_script])
+                    time.sleep(1.0)
+            except Exception:
+                pass
+        time.sleep(0.8)
+
+    logger.info("YouTube: opened video but playback state unconfirmed")
+    return False, "playback_unconfirmed"
+

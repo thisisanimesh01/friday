@@ -1,4 +1,5 @@
 import os
+import sys
 import importlib
 
 _DIR = os.path.dirname(os.path.abspath(__file__))
@@ -14,12 +15,16 @@ def load_plugins():
     global plugins
     plugins = {}
 
+    # Ensure project root is on sys.path so "plugins.<name>" resolves
+    if _DIR not in sys.path:
+        sys.path.insert(0, _DIR)
+
     if not os.path.exists(PLUGIN_FOLDER):
         return plugins
 
     for file in os.listdir(PLUGIN_FOLDER):
         if file.endswith(".py") and file != "__init__.py":
-            module_name = f"{PLUGIN_FOLDER}.{file[:-3]}"
+            module_name = f"plugins.{file[:-3]}"
             try:
                 module = importlib.import_module(module_name)
                 plugins[file[:-3]] = module  # store as dict

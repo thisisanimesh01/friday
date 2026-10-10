@@ -277,7 +277,7 @@ def summarize_conversation_worker(history_pairs: list):
     # Try Gemini first, then Groq, then skip but log diagnostics.
     providers = []
     if GEMINI_API_KEY:
-        providers.append(("Gemini", f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"))
+        providers.append(("Gemini", f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={GEMINI_API_KEY}"))
     if GROQ_API_KEY:
         providers.append(("Groq", "groq_client"))
 
@@ -371,8 +371,7 @@ def summarize_conversation_worker(history_pairs: list):
                 try:
                     response = client.chat.completions.create(
                         model="qwen/qwen3.8-27b",
-                        messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": history_text}],
-                        response_format={"type": "json_object"}
+                        messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": history_text}]
                     )
                     text = response.choices[0].message.content
                     if isinstance(text, str) and len(text.strip()) >= 20:
