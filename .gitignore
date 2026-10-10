@@ -1,41 +1,70 @@
 # ── Secrets & credentials ─────────────────────────────────────────────────────
 .env
 .env.*
+!.env.example
 *.pem
 *.key
+*.p12
+*.pfx
+secrets/
+secret/
+credentials/
+private/
+confidential/
 
-# ── Runtime / generated data ───────────────────────────────────────────────────
-*.log
+# ── Local database & state ────────────────────────────────────────────────────
+*.sqlite
+*.sqlite3
 *.db
+memory.db
 
-# ── Personal data ─────────────────────────────────────────────────────────────
+# ── Personal & local configuration ────────────────────────────────────────────
 contacts.json
+personality.json
 
-# ── Python cache ───────────────────────────────────────────────────────────────
+# ── Runtime & logs ────────────────────────────────────────────────────────────
+*.log
+friday.log
+tmp/
+temp/
+cache/
+.cache/
+
+# ── Python cache ──────────────────────────────────────────────────────────────
 __pycache__/
 **/__pycache__/
 *.py[cod]
 *.pyo
 
-# ── Virtual environments ───────────────────────────────────────────────────────
+# ── Virtual environments ──────────────────────────────────────────────────────
 venv/
 .venv/
 env/
+ENV/
 
-# ── macOS system files ─────────────────────────────────────────────────────────
+# ── Node / dependencies ───────────────────────────────────────────────────────
+node_modules/
+
+# ── macOS system files ────────────────────────────────────────────────────────
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
 .AppleDouble
 
-# ── IDE / editor files ─────────────────────────────────────────────────────────
+# ── IDE / editor files ────────────────────────────────────────────────────────
 .vscode/
 .idea/
 *.swp
+*.swo
 *~
 
-# ── Build / dist artifacts ─────────────────────────────────────────────────────
+# ── Build / dist artifacts ────────────────────────────────────────────────────
 dist/
 build/
 *.egg-info/
+*.egg
 
 # ── Test & coverage ───────────────────────────────────────────────────────────
 .pytest_cache/

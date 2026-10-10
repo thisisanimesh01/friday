@@ -2,11 +2,8 @@
 memory_manager.py — Persistent memory, conversation history, and rolling summarization.
 
 Storage layout:
-  memory.db          — SQLite: all conversation turns + embeddings
-  personality.json   — JSON: rolling summary, tone, user prefs (in PROJECT_ROOT)
-
-Both paths are resolved relative to this file's directory (project root),
-so they work correctly regardless of the caller's CWD.
+  memory.db — SQLite: all conversation turns + embeddings
+  In-memory session state: rolling summary, tone, user prefs
 """
 
 import os
@@ -28,7 +25,6 @@ logger = get_logger("MemoryManager")
 
 # ── Paths anchored to project root ────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PERSONALITY_FILE = PROJECT_ROOT / "personality.json"
 
 # ── Init DB ───────────────────────────────────────────────────────────────────
 init_db()
@@ -80,32 +76,24 @@ def cosine_sim(a, b):
     return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
 
 
-# ── Personality file (project-relative) ───────────────────────────────────────
+# ── In-memory session personality & context state ─────────────────────────────
+# personality.json is intentionally removed to protect user conversation privacy.
+# Session context, tone, mood, and rolling summary are managed in-memory.
+_session_personality = dict(DEFAULT_PERSONALITY)
+_personality_lock = threading.Lock()
+
 
 def load_personality() -> dict:
-    if not PERSONALITY_FILE.exists():
-        logger.info(f"personality.json not found at {PERSONALITY_FILE}, using defaults.")
-        return dict(DEFAULT_PERSONALITY)
-    try:
-        with open(PERSONALITY_FILE, "r") as f:
-            data = json.load(f)
-        # Ensure all expected keys exist
-        for k, v in DEFAULT_PERSONALITY.items():
-            data.setdefault(k, v)
-        logger.debug(f"Loaded personality from {PERSONALITY_FILE}")
-        return data
-    except Exception as e:
-        logger.error(f"Failed to load personality.json: {e}")
-        return dict(DEFAULT_PERSONALITY)
+    """Return in-memory session personality and context state."""
+    with _personality_lock:
+        return dict(_session_personality)
 
 
 def save_personality(data: dict):
-    try:
-        with open(PERSONALITY_FILE, "w") as f:
-            json.dump(data, f, indent=2)
-        logger.debug(f"Saved personality to {PERSONALITY_FILE}")
-    except Exception as e:
-        logger.error(f"Failed to save personality.json: {e}")
+    """Update in-memory session personality and context state (no file created)."""
+    with _personality_lock:
+        for k, v in data.items():
+            _session_personality[k] = v
 
 
 # ── Core memory operations ─────────────────────────────────────────────────────
