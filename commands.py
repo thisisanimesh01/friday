@@ -30,8 +30,9 @@ def extract_filename(command: str):
     )
     return match.group(1) if match else None
 
-def open_website(command):
+def open_website(command, is_url=False):
     sites = {
+        "mail": "https://mail.google.com",
         "leetcode": "https://leetcode.com/u/animeshyadav/",
         "coursera": "https://www.coursera.org",
         "github": "https://github.com/thisisanimesh01",
@@ -48,16 +49,34 @@ def open_website(command):
         "portfolio": "https://thisisanimesh01.github.io/Portfolio/",
     }
 
-    # If command is a direct site key (from route args), prefer exact match
-    cmd_lower = command.lower().strip()
+    cmd_stripped = command.strip()
+
+    # ── EXPLICIT URL: pass through unchanged ─────────────────────────────────
+    # If the input already is a URL (https://... or www....) or is_url flag set,
+    # open it directly. Do NOT reduce it to a site name.
+    if is_url or cmd_stripped.startswith("http://") or cmd_stripped.startswith("https://") or cmd_stripped.startswith("www."):
+        url = cmd_stripped
+        if url.startswith("www."):
+            url = "https://" + url
+        browser = "Chrome" if get_browser_for_url(url) == "chrome" else "Brave"
+        open_in_preferred_browser(url)
+        try:
+            host = urllib.parse.urlparse(url).hostname or url
+        except Exception:
+            host = url
+        return f"Opening {host} in {browser}."
+
+    # ── SITE-NAME LOOKUP ─────────────────────────────────────────────────────
+    cmd_lower = cmd_stripped.lower()
+
+    # Exact key match (e.g. command passed as bare "google", "spotify", etc.)
     if cmd_lower in sites:
         url = sites[cmd_lower]
-        # Determine browser name for message
         browser = "Chrome" if get_browser_for_url(url) == "chrome" else "Brave"
         open_in_preferred_browser(url)
         return f"Opening {cmd_lower} in {browser}."
 
-    # If the command includes a known site name anywhere, open it
+    # Keyword match anywhere in the command (e.g. "open google", "go to youtube")
     for site in sites:
         if site in cmd_lower:
             url = sites[site]
@@ -65,22 +84,11 @@ def open_website(command):
             open_in_preferred_browser(url)
             return f"Opening {site} in {browser}."
 
-    # If the command looks like a URL, open directly
-    if cmd_lower.startswith("http://") or cmd_lower.startswith("https://"):
-        browser = "Chrome" if get_browser_for_url(command) == "chrome" else "Brave"
-        open_in_preferred_browser(command)
-        return f"Opening URL in {browser}."
-
     return None
 
 def open_in_preferred_browser(url: str) -> bool:
-    """Open `url` in the preferred browser determined by `get_browser_for_url`.
-
-    On macOS we prefer to launch the app bundle via `open -a`. Fallback to the
-    default `webbrowser.open` if the platform/command isn't available.
-    """
+    """Open `url` in the preferred browser, reusing an existing tab if the exact hostname matches."""
     browser_pref = get_browser_for_url(url)
-    # Log routing decision (do not include API keys or sensitive tokens)
     try:
         host = urllib.parse.urlparse(url).hostname or url
     except Exception:
@@ -90,21 +98,17 @@ def open_in_preferred_browser(url: str) -> bool:
     logger.info(f"Browser selected: {browser_pref}")
 
     try:
-        # Decide match substring for tab reuse heuristics
         parsed = urllib.parse.urlparse(url)
-        host = parsed.hostname or url
+        hostname = parsed.hostname or ""
 
-        match_sub = None
-        if "youtube.com" in host or "youtu.be" in host:
-            match_sub = "youtube.com"
-        elif "spotify" in host:
-            match_sub = "spotify"
-        elif "google" in host:
-            match_sub = "google.com"
-        elif "coursera" in host:
-            match_sub = "coursera.org"
-        elif "github" in host:
-            match_sub = "github.com"
+        # Strip www. for matching purposes (same logic as browser_manager)
+        if hostname.startswith("www."):
+            hostname = hostname[4:]
+
+        # Use the exact (www-stripped) hostname as the match key.
+        # This means google.com only matches google.com tabs,
+        # mail.google.com only matches mail.google.com tabs, etc.
+        match_sub = hostname if hostname else None
 
         success = open_or_reuse_tab(url, browser_pref, match_substring=match_sub)
         if success:
@@ -121,6 +125,7 @@ def open_in_preferred_browser(url: str) -> bool:
             return True
         except Exception:
             return False
+
 
 def execute_command(command):
     if is_dangerous(command):
@@ -299,8 +304,9 @@ def execute_command(command):
 
     elif intent == "open_website":
         website_name = args.get("website_name")
+        is_url = args.get("is_url", False)
         if website_name:
-            web_result = open_website(website_name)
+            web_result = open_website(website_name, is_url=is_url)
             if web_result:
                 return web_result
         return open_website(command)

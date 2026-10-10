@@ -147,10 +147,25 @@ def run_friday():
         m_youtube = re.match(r"(?is)^play\s+(.+?)\s+on\s+youtube\s*$", user_input)
         m_spotify = re.match(r"(?is)^play\s+(.+?)\s+on\s+spotify\s*$", user_input)
 
-        # Open site explicit intents
-        m_open_site = re.match(r"(?is)^(open|go to|visit)\s+(youtube|spotify|github|coursera|wikipedia|google|leetcode|linkedin|instagram|gmail|outlook|whatsapp|chess|portfolio)\b", user_input)
+        # Explicit URL: https://... or www.... — must go through execute_command unchanged
+        # Do NOT intercept here; route_command handles URL-first detection.
+        is_explicit_url = (
+            user_input.strip().startswith("http://") or
+            user_input.strip().startswith("https://") or
+            user_input.strip().startswith("www.")
+        )
 
-        if m_youtube or m_spotify or m_open_site:
+        # Open site explicit intents (keyword-based, NOT for explicit URLs)
+        m_open_site = None
+        if not is_explicit_url:
+            m_open_site = re.match(
+                r"(?is)^(open|go to|visit)\s+"
+                r"(youtube|spotify|github|coursera|wikipedia|google|leetcode|linkedin"
+                r"|instagram|gmail|mail|outlook|whatsapp|chess|portfolio)\b",
+                user_input
+            )
+
+        if m_youtube or m_spotify or m_open_site or is_explicit_url:
             # Directly handle deterministic commands to avoid plugin overrides
             result = execute_command(user_input)
             if result:

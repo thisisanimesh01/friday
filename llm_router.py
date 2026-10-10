@@ -66,6 +66,15 @@ def route_command(user_input):
     # First: explicit pattern checks (highest priority) to avoid LLM misclassification
     lower = user_input.lower()
 
+    # ── URL DETECTION: MUST BE FIRST ─────────────────────────────────────────
+    # An explicit URL like https://mail.google.com/ must NEVER be matched by the
+    # known_sites keyword loop (which would incorrectly reduce it to "google").
+    _stripped = user_input.strip()
+    if _stripped.startswith("http://") or _stripped.startswith("https://") or _stripped.startswith("www."):
+        logger.info(f"Explicit URL detected: {_stripped}")
+        # Pass the original (unmodified) URL — preserve case and full path
+        return {"intent": "open_website", "args": {"website_name": _stripped, "is_url": True}}
+
     # Explicit media intent detection (highest priority)
     m_spotify = re.search(r"(?is)play\s+(.+?)\s+on\s+spotify", user_input)
     if m_spotify:
@@ -90,7 +99,7 @@ def route_command(user_input):
     # Known websites routing (Brave)
     known_sites = [
         "spotify", "youtube", "google", "github", "wikipedia",
-        "leetcode", "linkedin", "instagram", "gmail", "outlook",
+        "leetcode", "linkedin", "instagram", "gmail", "mail", "outlook",
         "whatsapp", "chess", "portfolio"
     ]
     for s in known_sites:
@@ -99,9 +108,9 @@ def route_command(user_input):
             logger.info(f"Intent: browser_action | Target: {s.title()} | Browser selected: brave")
             return {"intent": "open_website", "args": {"website_name": s}}
 
-    # URL or explicit search queries (excluding file operations)
+    # Catch-all URL fallback (should already be handled above, belt-and-suspenders)
     if lower.startswith("http://") or lower.startswith("https://"):
-        return {"intent": "open_website", "args": {"website_name": lower}}
+        return {"intent": "open_website", "args": {"website_name": user_input.strip(), "is_url": True}}
 
     if re.search(r"\b(search for|search|browse)\b", lower) and not any(kw in lower for kw in ["file", "files", "folder", "trash", "code"]):
         logger.info(f"Browser request detected (deterministic fallback). Input: {user_input}")
@@ -145,6 +154,11 @@ def route_command(user_input):
     # Deterministic fallback: give explicit media targets higher priority
     lower = user_input.lower()
 
+    # ── URL DETECTION FIRST (same rule as top of function) ───────────────────
+    _stripped2 = user_input.strip()
+    if _stripped2.startswith("http://") or _stripped2.startswith("https://") or _stripped2.startswith("www."):
+        return {"intent": "open_website", "args": {"website_name": _stripped2, "is_url": True}}
+
     # Explicit media intent detection (highest priority)
     m_spotify = re.search(r"(?is)play\s+(.+?)\s+on\s+spotify", user_input)
     if m_spotify:
@@ -169,7 +183,7 @@ def route_command(user_input):
     # Known websites routing (Brave)
     known_sites = [
         "spotify", "youtube", "google", "github", "wikipedia",
-        "leetcode", "linkedin", "instagram", "gmail", "outlook",
+        "leetcode", "linkedin", "instagram", "gmail", "mail", "outlook",
         "whatsapp", "chess", "portfolio"
     ]
     for s in known_sites:
@@ -177,9 +191,6 @@ def route_command(user_input):
             logger.info(f"Browser request detected (deterministic fallback). Input: {user_input}")
             logger.info(f"Intent: browser_action | Target: {s.title()} | Browser selected: brave")
             return {"intent": "open_website", "args": {"website_name": s}}
-
-    if lower.startswith("http://") or lower.startswith("https://"):
-        return {"intent": "open_website", "args": {"website_name": lower}}
 
     if re.search(r"\b(search for|search|browse)\b", lower) and not any(kw in lower for kw in ["file", "files", "folder", "trash", "code"]):
         logger.info(f"Browser request detected (deterministic fallback). Input: {user_input}")
