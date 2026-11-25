@@ -13,6 +13,7 @@ load_plugins()
 load_dotenv()
 
 from logger import get_logger
+from runtime_mode import cloud_fallback_allowed, is_offline_mode
 logger = get_logger("Brain")
 
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "auto").lower()
@@ -185,17 +186,24 @@ def ask_friday(prompt):
             content = content.split("</think>")[-1].strip()
         return content
 
-    if LLM_PROVIDER == "ollama":
+    if LLM_PROVIDER in ("ollama", "auto"):
         try:
             return _try_ollama()
         except Exception as e:
             logger.error(f"Ollama failed: {e}")
-            if OLLAMA_STRICT_OFFLINE:
+            if is_offline_mode() or OLLAMA_STRICT_OFFLINE or not cloud_fallback_allowed():
                 past = retrieve_memory(prompt)
                 if past:
                     best = past[0]
                     return f"I'm offline, but from what I remember: {best[2]}"
                 return "I'm offline and don't have enough memory yet."
+
+    if is_offline_mode() or not cloud_fallback_allowed():
+        past = retrieve_memory(prompt)
+        if past:
+            best = past[0]
+            return f"I'm offline, but from what I remember: {best[2]}"
+        return "I'm offline and don't have enough memory yet."
 
     if client:
         try:

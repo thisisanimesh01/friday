@@ -4,6 +4,7 @@ import requests
 from dotenv import load_dotenv
 from groq import Groq
 from logger import get_logger
+from runtime_mode import cloud_fallback_allowed, is_offline_mode
 import re
 
 load_dotenv()
@@ -141,19 +142,19 @@ def route_command(user_input):
         logger.info(f"[Ollama Router] '{user_input}' → intent={result.get('intent')}, args={result.get('args')}")
         return result
 
-    # If explicitly configured for Ollama, try it first
-    if LLM_PROVIDER == "ollama":
+    # If explicitly configured for Ollama or auto, try Ollama first
+    if LLM_PROVIDER in ("ollama", "auto"):
         try:
             return _try_ollama()
         except Exception as e:
             logger.warning(f"[Ollama Router] failed for '{user_input}': {e}.")
-            if OLLAMA_STRICT_OFFLINE:
-                logger.info("[Ollama Router] Strict offline mode enabled; skipping cloud providers.")
+            if is_offline_mode() or OLLAMA_STRICT_OFFLINE or not cloud_fallback_allowed():
+                logger.info("[Ollama Router] Cloud fallback disabled; skipping cloud providers.")
             else:
                 logger.info("Falling back to cloud providers.")
 
-    # Primary: Groq Qwen (skipped in strict offline mode)
-    if client and not (LLM_PROVIDER == "ollama" and OLLAMA_STRICT_OFFLINE):
+    # Primary: Groq Qwen (skipped in offline mode or when cloud fallback is disabled)
+    if client and not is_offline_mode() and not (LLM_PROVIDER == "ollama" and OLLAMA_STRICT_OFFLINE) and cloud_fallback_allowed():
         try:
             response = client.chat.completions.create(
                 model="qwen/qwen3.8-27b",
@@ -170,8 +171,8 @@ def route_command(user_input):
         except Exception as e:
             logger.warning(f"[Groq Router] failed for '{user_input}': {e}. Falling back to Gemini.")
 
-    # Fallback: Gemini Flash (skipped in strict offline mode)
-    if GEMINI_API_KEY and not (LLM_PROVIDER == "ollama" and OLLAMA_STRICT_OFFLINE):
+    # Fallback: Gemini Flash (skipped in offline mode or when cloud fallback is disabled)
+    if GEMINI_API_KEY and not is_offline_mode() and not (LLM_PROVIDER == "ollama" and OLLAMA_STRICT_OFFLINE) and cloud_fallback_allowed():
         try:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={GEMINI_API_KEY}"
             payload = {
