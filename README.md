@@ -74,3 +74,36 @@ Friday v2.1 focuses on making the assistant more reliable and practical for ever
                  │    Memory System      │
                  │ SQLite + Context      │
                  └───────────────────────┘
+```
+
+---
+
+## ⚙️ Setup & Installation
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/thisisanimesh01/friday.git
+cd friday
+
+# 2. Create & activate a virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# 3. Install dependencies
+pip install -r requirements.txt
+
+# 4. Configure environment variables
+cp .env.example .env
+# Add your API keys (GROQ_API, GEMINI_API, etc.) to .env
+
+# 5. Run Friday
+python3 main.py
+```
+
+---
+
+## 🤝 Contributing
+
+1. Check open issues or create a new one using the **Bug Report** or **Feature Request** template.
+2. Create a feature branch (`git checkout -b feat/your-feature`).
+3. Commit your changes and open a Pull Request using the PR template.
