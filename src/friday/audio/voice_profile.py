@@ -23,6 +23,9 @@ class VoiceProfile:
     hindi_voice: str
     speech_rate: int
     volume: float = 1.0
+    pitch_adjustment: float = 0.0  # Semitone offset where supported (-5.0 to +5.0)
+    style_strength: float = 1.0    # Conditioning/style strength (0.0 to 1.0)
+    reference_path: Optional[str] = None
     description: str = ""
     target_style: str = "gentle"
     supported_languages: list[str] = field(default_factory=lambda: ["en", "hi"])
