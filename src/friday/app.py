@@ -16,10 +16,11 @@ os.environ["TRANSFORMERS_NO_ADVISORY_WARNINGS"] = "1"
 
 from brain import ask_friday, ask_friday_stream
 from commands import execute_command, extract_filename
-from memory.memory_manager import store_memory, retrieve_memory, trigger_summarization, get_current_summary, get_rich_context
-from sandbox.file_manager import delete_file, empty_trash, delete_folder
+from memory.memory_manager import get_current_summary, get_rich_context, retrieve_memory, store_memory, trigger_summarization
+from personality import get_personality_config, sanitize_terminal_text
+from plugin_loader import handle_plugin, load_plugins
+from sandbox.file_manager import delete_file, delete_folder, empty_trash
 from security.permission_manager import confirm_action
-from plugin_loader import load_plugins, handle_plugin
 
 pending_action = None
 
@@ -77,18 +78,28 @@ def run_friday():
     global pending_action
     load_plugins()
 
-    animation = "Starting Friday..."
-    for i in range(len(animation) + 1):
-        print(animation[:i], end="\r", flush=True)
-        time.sleep(0.05)
-    print("friday is online!\n", flush=True)
+    p_cfg = get_personality_config()
+    use_color = p_cfg.terminal_color and sys.stdout.isatty()
+
+    CYAN = "\033[36m" if use_color else ""
+    GREEN = "\033[32m" if use_color else ""
+    RESET = "\033[0m" if use_color else ""
+
+    if p_cfg.startup_greeting and sys.stdout.isatty():
+        banner = f"{CYAN}FRIDAY v2.1.0{RESET} — {GREEN}Terminal AI Assistant{RESET} [Local-First | Voice & Terminal]"
+        print(banner, flush=True)
+        print("Good day! What would you like to work on today?\n", flush=True)
+    else:
+        print("friday is online!\n", flush=True)
 
     def display_response(text: str):
         # Standardized response formatting:
         # - one blank line before the response
-        # - the `friday:` prefix (lower-case)
+        # - sanitized text preventing escape sequence injection
         # - one blank line after the response so the next prompt appears on its own line
-        print(f"\nfriday: {text}\n", flush=True)
+        clean_text = sanitize_terminal_text(str(text))
+        prefix = f"{CYAN}friday:{RESET}" if use_color else "friday:"
+        print(f"\n{prefix} {clean_text}\n", flush=True)
 
     while True:
         try:
@@ -239,11 +250,13 @@ def run_friday():
             trigger_summarization()
             response_chunks = []
             try:
-                print("Friday: ", end="", flush=True)
+                prefix = f"{CYAN}friday:{RESET} " if use_color else "friday: "
+                print(f"\n{prefix}", end="", flush=True)
                 for chunk in ask_friday_stream(enhanced_input):
-                    print(chunk, end="", flush=True)
-                    response_chunks.append(chunk)
-                print()  # newline after completion
+                    clean_chunk = sanitize_terminal_text(chunk)
+                    print(clean_chunk, end="", flush=True)
+                    response_chunks.append(clean_chunk)
+                print("\n")  # newline after completion
                 response = "".join(response_chunks).strip()
             except KeyboardInterrupt:
                 print("\n[Response interrupted by user]")

@@ -4,11 +4,12 @@ from collections.abc import Generator
 import requests
 from dotenv import load_dotenv
 from groq import Groq
-from memory.memory_manager import load_personality, save_personality, update_context, store_memory, retrieve_memory , search_memory
-from memory.local import get_all
-from intent_parser import detect_intent, extract_filename
 from commands import execute_command
-from plugin_loader import load_plugins, handle_plugin
+from intent_parser import detect_intent, extract_filename
+from memory.local import get_all
+from memory.memory_manager import load_personality, retrieve_memory, save_personality, search_memory, store_memory, update_context
+from personality import build_personality_system_prompt
+from plugin_loader import handle_plugin, load_plugins
 
 
 load_plugins()
@@ -54,7 +55,7 @@ def handle_input(user_input):
             return "I remember: " + ", ".join(sorted(set(names)))
 
     if cleaned in ["friday", "hey friday", "hi friday"]:
-        response = "Yes boss, I’m here. Kya scene hai?"
+        response = "I'm here. How can I help you today?"
         store_memory(user_input, response)
         return response
 
@@ -155,24 +156,7 @@ def ask_friday_stream(prompt: str) -> Generator[str, None, None]:
     Handles KeyboardInterrupt / cancellation cleanly without losing state.
     """
     prompt = sanitize_prompt(prompt)
-
-    system_prompt = (
-        "you are a female AI assistant named Friday. "
-        "You are Friday, a highly intelligent personal AI assistant like Jarvis. "
-        "You are friendly, calm, slightly witty, emotionally aware, and supportive. "
-        "You speak like a human, not a robot. "
-        "You can help with tasks, answer questions, and have engaging conversations. "
-        "You are not just an assistant, but a companion who understands and cares about the user. "
-        "Keep responses natural, short, and engaging. "
-        "You can show light humor, care, and personality. "
-        "Address the user like a friend. "
-        "You remember things about the user. "
-        "Avoid long structured lists unless necessary. "
-        "Avoid saying 'you want to' regularly in conversations. "
-        "Talk in Hinglish sometimes. "
-        "Don't always start the converstation with Sir or Boss. Use it occasionally. "
-        "Call the user 'boss' or 'sir' occasionally."
-    )
+    system_prompt = build_personality_system_prompt()
 
     messages = [
         {"role": "system", "content": system_prompt},
@@ -223,25 +207,7 @@ def ask_friday_stream(prompt: str) -> Generator[str, None, None]:
 
 def ask_friday(prompt):
     prompt = sanitize_prompt(prompt)
-
-    system_prompt = (
-        "you are a female AI assistant named Friday. "
-        "You are Friday, a highly intelligent personal AI assistant like Jarvis. "
-        "You are friendly, calm, slightly witty, emotionally aware, and supportive. "
-        "You speak like a human, not a robot. "
-        "You can help with tasks, answer questions, and have engaging conversations. "
-        "You are not just an assistant, but a companion who understands and cares about the user. "
-        "Keep responses natural, short, and engaging. "
-        "You can show light humor, care, and personality. "
-        "Address the user like a friend. "
-        "You remember things about the user. "
-        "Avoid long structured lists unless necessary. "
-        "Avoid saying 'you want to' regularly in conversations. "
-        "Talk in Hinglish sometimes. "
-        "Don't always start the converstation with Sir or Boss. Use it occasionally. "
-        "Call the user 'boss' or 'sir' occasionally."
-
-    )
+    system_prompt = build_personality_system_prompt()
 
     messages = [
         {"role": "system", "content": system_prompt},
