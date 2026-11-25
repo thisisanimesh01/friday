@@ -118,6 +118,18 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Select stylistic voice profile for speech synthesis (e.g. 'friday-gentle', 'friday-standard').",
     )
+    parser.add_argument(
+        "--voice-reference",
+        type=str,
+        default=None,
+        help="Path to an authorized local reference WAV audio file for voice conditioning.",
+    )
+    parser.add_argument(
+        "--validate-reference",
+        type=str,
+        default=None,
+        help="Validate a local audio reference file (format, duration, signal RMS).",
+    )
     return parser
 
 
@@ -131,6 +143,20 @@ def main(argv: Sequence[str] | None = None) -> int:
         os.environ["LLM_PROVIDER"] = args.provider
     if args.mode:
         os.environ["FRIDAY_MODE"] = args.mode
+
+    if args.validate_reference:
+        from friday.audio.voice_reference import VoiceReferenceValidator
+
+        validator = VoiceReferenceValidator()
+        res = validator.validate_file(args.validate_reference)
+        if res.is_valid:
+            print(f"Voice reference '{res.path}' is valid.")
+            print(f"  Duration: {res.duration_s}s | Sample Rate: {res.sample_rate}Hz | Channels: {res.channels}")
+            print(f"  RMS Level: {res.rms} | Peak: {res.peak} | Clipped: {res.clipped}")
+            return 0
+        else:
+            print(f"Voice reference validation failed: {res.error}")
+            return 1
 
     if args.list_voices:
         from friday.audio.tts import TTSEngine
