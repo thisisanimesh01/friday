@@ -129,10 +129,24 @@ python3 -m compileall -q .
 
 ---
 
-## Roadmap
+## Master Roadmap
 
-* **Completed (Phase 1):** Repository hygiene, packaging (`pyproject.toml`, `LICENSE`), error-handling hardening, offline `pytest` + 3-job CI, `src/friday/` package restructuring, CLI & README polish.
-* **Planned (Phase 2–4):** Ollama validation & optimization, Hinata-inspired voice TTS pipeline, and final integration/release.
+* **Phase 1 — Engineering Foundation:** Completed (Repository hygiene, packaging, error handling, unit tests, restructured package, CLI).
+* **Phase 2 — Hybrid AI Intelligence:** Completed (Local Ollama integration, hybrid router, streaming responses, offline privacy).
+* **Phase 3 — Hearing & Voice Input:** Completed (Microphone capture, local Whisper STT, Hey Friday wake word, continuous listening).
+* **Phase 4 — Hinata Voice & Speech Output:** Completed (Local TTS, voice model feasibility, voice profile tuning, streaming speech, hands-free conversation).
+* **Phase 5 — Personality & Advanced Memory:**
+  - **Milestone 5.1:** Consistent Friday Personality & Terminal-Only Architecture — **Current**.
+  - **Milestone 5.2:** Contextual Memory Improvements — **Next**.
+  - **Milestone 5.3:** Personal Preferences & Recall.
+  - **Milestone 5.4:** Memory Privacy & Management.
+* **Phase 6 — macOS Control & Automation:** Application management, AppleScript/Shortcuts, system controls, confirmation framework.
+* **Phase 7 — Vision & Screen Awareness:** Permission-controlled screenshots, local OCR, document understanding, window awareness.
+* **Phase 8 — Online Intelligence & Plugins:** Internet tool improvements, web research, browser automation, productivity plugins.
+* **Phase 9 — Personal Developer Assistant:** Project workspace awareness, code analysis & debugging, Git/GitHub assistance, safe terminal execution.
+* **Phase 10 — Proactive Intelligence:** Calendar & reminders, morning briefings, system monitoring, scheduled background service.
+* **Phase 11 — Terminal Experience & System Integration:** Advanced terminal presentation, live voice & system indicators, command shortcuts & history, terminal diagnostics, CLI configuration, optional launch-at-login.
+* **Phase 12 — Final Integration & Release:** End-to-end integration, full security & privacy audit, performance optimization, v3.0 stable release.
 
 ---
 

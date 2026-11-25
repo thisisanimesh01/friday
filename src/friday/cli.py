@@ -146,6 +146,22 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Run Friday in unified hands-free conversation mode (wake-word standby, speech streaming, and spoken barge-in).",
     )
+    parser.add_argument(
+        "--personality",
+        choices=["friendly", "professional", "casual"],
+        default=None,
+        help="Assistant personality style (friendly, professional, casual).",
+    )
+    parser.add_argument(
+        "--no-color",
+        action="store_true",
+        help="Disable ANSI colors in terminal output.",
+    )
+    parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Suppress startup banner and non-essential status messages.",
+    )
     return parser
 
 
@@ -159,6 +175,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         os.environ["LLM_PROVIDER"] = args.provider
     if args.mode:
         os.environ["FRIDAY_MODE"] = args.mode
+    if args.personality:
+        os.environ["FRIDAY_PERSONALITY"] = args.personality
+    if args.no_color:
+        os.environ["FRIDAY_TERMINAL_COLOR"] = "false"
+        os.environ["NO_COLOR"] = "1"
+    if args.quiet:
+        os.environ["FRIDAY_STARTUP_GREETING"] = "false"
 
     if args.validate_reference:
         from friday.audio.voice_reference import VoiceReferenceValidator
