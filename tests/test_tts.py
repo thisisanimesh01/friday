@@ -48,17 +48,19 @@ def test_tts_engine_hindi_voice_selection():
 
 def test_tts_mocked_speak_execution():
     engine = TTSEngine()
+    engine._say_bin = "/usr/bin/say"
     mock_proc = MagicMock()
     mock_proc.returncode = 0
     mock_proc.wait.return_value = 0
 
-    with patch("subprocess.Popen", return_value=mock_proc) as mock_popen:
-        success = engine.speak("Hello Friday")
-        assert success is True
-        mock_popen.assert_called_once()
-        cmd = mock_popen.call_args[0][0]
-        assert cmd[0].endswith("say")
-        assert "Hello Friday" in cmd
+    with patch.object(engine, "is_available", return_value=True):
+        with patch("subprocess.Popen", return_value=mock_proc) as mock_popen:
+            success = engine.speak("Hello Friday")
+            assert success is True
+            mock_popen.assert_called_once()
+            cmd = mock_popen.call_args[0][0]
+            assert cmd[0].endswith("say")
+            assert "Hello Friday" in cmd
 
 
 def test_playback_manager_microphone_gating():
