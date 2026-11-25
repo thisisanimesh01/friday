@@ -112,6 +112,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Test local speech synthesis by speaking a sample phrase.",
     )
+    parser.add_argument(
+        "--voice-profile",
+        type=str,
+        default=None,
+        help="Select stylistic voice profile for speech synthesis (e.g. 'friday-gentle', 'friday-standard').",
+    )
     return parser
 
 
@@ -160,6 +166,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         os.environ["TTS_ENABLED"] = "true"
         if args.voice:
             os.environ["TTS_VOICE"] = args.voice
+        if args.voice_profile:
+            os.environ["TTS_VOICE_PROFILE"] = args.voice_profile
         from friday.audio.devices import list_microphones
 
         mics = list_microphones()
