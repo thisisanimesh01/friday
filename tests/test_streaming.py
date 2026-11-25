@@ -3,8 +3,9 @@ import sys
 from types import ModuleType
 from unittest.mock import MagicMock
 
-# Stub heavy/optional dependencies before importing brain
-if "memory.memory_manager" not in sys.modules:
+# Stub memory package before importing brain so numpy/supabase are not required
+if "memory" not in sys.modules:
+    _mem = ModuleType("memory")
     _mm = ModuleType("memory.memory_manager")
     _mm.load_personality = MagicMock()
     _mm.save_personality = MagicMock()
@@ -12,6 +13,18 @@ if "memory.memory_manager" not in sys.modules:
     _mm.store_memory = MagicMock()
     _mm.retrieve_memory = MagicMock(return_value=[])
     _mm.search_memory = MagicMock(return_value=[])
+    _mem.memory_manager = _mm
+    sys.modules["memory"] = _mem
+    sys.modules["memory.memory_manager"] = _mm
+else:
+    _mm = ModuleType("memory.memory_manager")
+    _mm.load_personality = MagicMock()
+    _mm.save_personality = MagicMock()
+    _mm.update_context = MagicMock(return_value="")
+    _mm.store_memory = MagicMock()
+    _mm.retrieve_memory = MagicMock(return_value=[])
+    _mm.search_memory = MagicMock(return_value=[])
+    sys.modules["memory"].memory_manager = _mm
     sys.modules["memory.memory_manager"] = _mm
 
 if "memory.local" not in sys.modules:
