@@ -1,4 +1,5 @@
 import pytest
+
 from friday.cli import build_parser
 
 
