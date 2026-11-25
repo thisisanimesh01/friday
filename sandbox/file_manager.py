@@ -99,7 +99,7 @@ def restore_file(name: str) -> str:
 def list_trash() -> list:
     try:
         return [f for f in os.listdir(TRASH_DIR) if not f.startswith(".")]
-    except:
+    except OSError:
         return []
 
 def list_files() -> list:

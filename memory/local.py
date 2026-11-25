@@ -69,7 +69,7 @@ def get_all():
     for row in rows:
         try:
             bot = json.loads(row[2])
-        except:
+        except (json.JSONDecodeError, TypeError):
             bot = row[2]
 
         parsed_rows.append((row[0], row[1], bot, row[3], row[4]))

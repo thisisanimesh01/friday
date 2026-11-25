@@ -149,7 +149,8 @@ def execute_command(command):
             path = get_safe_path(filename)
             if os.path.exists(path):
                 return f"File '{filename}' already exists."
-        except:
+        except (ValueError, OSError) as e:
+            logger.warning(f"Invalid file name '{filename}': {e}")
             return "Invalid file name."
         return create_file(filename, "Hello sir , its Friday v2")
 
@@ -159,7 +160,8 @@ def execute_command(command):
             return "Please specify a file name."
         try:
             path = get_safe_path(filename)
-        except:
+        except (ValueError, OSError) as e:
+            logger.warning(f"Invalid file path '{filename}': {e}")
             return "Invalid file path."
         if not os.path.exists(path):
             return f"File '{filename}' does not exist."
@@ -221,14 +223,16 @@ def execute_command(command):
                 return f"Message sent to {name}."
             else:
                 return f"who is {name} sir?"
-        except:
+        except Exception as e:
+            logger.error(f"Couldn't send Telegram message to '{name}': {e}")
             return "Couldn't send message."
 
     elif intent == "open_code":
         try:
             os.system("code .")
             return "Launching VS Code..."
-        except:
+        except OSError as e:
+            logger.error(f"Couldn't launch VS Code: {e}")
             return "Couldn't launch VS Code."
 
     elif intent == "play_youtube":
