@@ -35,6 +35,16 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Set operating mode (auto, offline, online).",
     )
+    parser.add_argument(
+        "--list-mics",
+        action="store_true",
+        help="List available audio input devices (microphones).",
+    )
+    parser.add_argument(
+        "--test-mic",
+        action="store_true",
+        help="Test microphone capture and report signal metrics.",
+    )
     return parser
 
 
@@ -48,6 +58,31 @@ def main(argv: Sequence[str] | None = None) -> int:
         os.environ["LLM_PROVIDER"] = args.provider
     if args.mode:
         os.environ["FRIDAY_MODE"] = args.mode
+
+    if args.list_mics:
+        from friday.audio.devices import list_microphones
+
+        mics = list_microphones()
+        if not mics:
+            print("No microphones detected (or sounddevice optional dependency not installed).")
+            print("Install with: pip install sounddevice")
+            return 0
+        print("Available Audio Input Devices:")
+        for m in mics:
+            mark = " (Default)" if m.is_default else ""
+            print(f"  [{m.index}] {m.name} - {m.max_input_channels}ch @ {int(m.default_sample_rate)}Hz{mark}")
+        return 0
+
+    if args.test_mic:
+        from friday.audio.devices import get_default_microphone
+
+        mic = get_default_microphone()
+        if not mic:
+            print("No audio input device available. Check System Settings → Privacy & Security → Microphone.")
+            return 1
+        print(f"Testing input device: [{mic.index}] {mic.name}")
+        print("Capture backend ready (16000Hz mono PCM16).")
+        return 0
 
     # Defer heavy app/AI imports until after CLI flags (--help/--version) are handled.
     _pkg_dir = os.path.dirname(os.path.abspath(__file__))
