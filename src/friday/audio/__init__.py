@@ -4,16 +4,23 @@ from friday.audio.config import AudioConfig, DEFAULT_AUDIO_CONFIG
 from friday.audio.devices import AudioDevice, get_default_microphone, list_microphones
 from friday.audio.processing import calculate_rms_and_peak, pcm16_to_wav_bytes
 from friday.audio.recorder import AudioRecorder
+from friday.audio.session import ContinuousListener, ConversationState
 from friday.audio.stt import TranscriptionResult, WhisperEngine
+from friday.audio.vad import SpeechEndpointDetector, VADDecision, VoiceActivityDetector
 from friday.audio.wake_word import ListenerState, WakeWordEngine, WakeWordEvent, WakeWordListener
 
 __all__ = [
     "AudioConfig",
     "AudioDevice",
     "AudioRecorder",
+    "ContinuousListener",
+    "ConversationState",
     "DEFAULT_AUDIO_CONFIG",
     "ListenerState",
+    "SpeechEndpointDetector",
     "TranscriptionResult",
+    "VADDecision",
+    "VoiceActivityDetector",
     "WakeWordEngine",
     "WakeWordEvent",
     "WakeWordListener",

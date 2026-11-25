@@ -77,6 +77,17 @@ def build_parser() -> argparse.ArgumentParser:
         default=0.5,
         help="Wake-word detection sensitivity threshold (0.0 to 1.0, default 0.5).",
     )
+    parser.add_argument(
+        "--continuous",
+        action="store_true",
+        help="Run Friday in continuous conversational listening mode with voice interruption support.",
+    )
+    parser.add_argument(
+        "--session-timeout",
+        type=float,
+        default=30.0,
+        help="Inactivity timeout in seconds before continuous conversation returns to standby (default 30.0).",
+    )
     return parser
 
 
@@ -157,6 +168,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         listener.start()
         print(f"Wake-word listener active. Say '{engine.phrase}' to activate Friday.")
         print("Press Ctrl+C to stop listening.")
+        return 0
+
+    if args.continuous:
+        from friday.audio.session import ContinuousListener
+
+        listener = ContinuousListener(session_timeout=args.session_timeout)
+        listener.start()
+        print(f"Continuous conversation mode active (Session timeout: {args.session_timeout}s).")
+        print("Say 'Hey Friday' to start, follow-up naturally, or say 'Stop' to interrupt.")
+        print("Say 'Stop listening' to shut down microphone, or press Ctrl+C.")
         return 0
 
     # Defer heavy app/AI imports until after CLI flags (--help/--version) are handled.
