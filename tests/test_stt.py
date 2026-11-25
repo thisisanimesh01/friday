@@ -1,7 +1,7 @@
 import struct
 from unittest.mock import MagicMock
 
-from friday.audio.stt import TranscriptionResult, WhisperEngine
+from friday.audio.stt import WhisperEngine
 
 
 def test_whisper_engine_defaults():
