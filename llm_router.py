@@ -7,6 +7,9 @@ from logger import get_logger
 import re
 
 load_dotenv()
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "auto").lower()
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
 GROQ_API_KEY = os.getenv("GROQ_API")
 GEMINI_API_KEY = os.getenv("GEMINI_API")
 logger = get_logger("LLMRouter")
@@ -116,6 +119,30 @@ def route_command(user_input):
         logger.info(f"Browser request detected (deterministic fallback). Input: {user_input}")
         logger.info("Intent: browser_action | Target: general web | Browser selected: brave")
         return {"intent": "open_website", "args": {"website_name": lower}}
+
+    def _try_ollama():
+        url = f"{OLLAMA_BASE_URL}/api/chat"
+        payload = {
+            "model": OLLAMA_MODEL,
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": user_input}
+            ],
+            "format": "json",
+            "stream": False
+        }
+        res = requests.post(url, json=payload, timeout=15).json()
+        text = res["message"]["content"]
+        result = _clean_json_text(text)
+        logger.info(f"[Ollama Router] '{user_input}' → intent={result.get('intent')}, args={result.get('args')}")
+        return result
+
+    # If explicitly configured for Ollama, try it first
+    if LLM_PROVIDER == "ollama":
+        try:
+            return _try_ollama()
+        except Exception as e:
+            logger.warning(f"[Ollama Router] failed for '{user_input}': {e}. Falling back to cloud providers.")
 
     # Primary: Groq Qwen
     if client:
