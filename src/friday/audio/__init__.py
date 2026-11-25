@@ -9,6 +9,7 @@ from friday.audio.session import ContinuousListener, ConversationState
 from friday.audio.stt import TranscriptionResult, WhisperEngine
 from friday.audio.tts import TTSEngine, Voice, prepare_speech_text
 from friday.audio.vad import SpeechEndpointDetector, VADDecision, VoiceActivityDetector
+from friday.audio.voice_profile import VoiceProfile, VoiceRegistry
 from friday.audio.wake_word import ListenerState, WakeWordEngine, WakeWordEvent, WakeWordListener
 
 __all__ = [
@@ -26,6 +27,8 @@ __all__ = [
     "VADDecision",
     "Voice",
     "VoiceActivityDetector",
+    "VoiceProfile",
+    "VoiceRegistry",
     "WakeWordEngine",
     "WakeWordEvent",
     "WakeWordListener",
