@@ -29,6 +29,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Override the default LLM provider (auto, ollama, groq, gemini, deepseek).",
     )
+    parser.add_argument(
+        "--mode",
+        choices=["auto", "offline", "online"],
+        default=None,
+        help="Set operating mode (auto, offline, online).",
+    )
     return parser
 
 
@@ -40,6 +46,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         os.environ["FRIDAY_DEBUG"] = "1"
     if args.provider:
         os.environ["LLM_PROVIDER"] = args.provider
+    if args.mode:
+        os.environ["FRIDAY_MODE"] = args.mode
 
     # Defer heavy app/AI imports until after CLI flags (--help/--version) are handled.
     _pkg_dir = os.path.dirname(os.path.abspath(__file__))
