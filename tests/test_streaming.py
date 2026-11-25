@@ -38,9 +38,8 @@ if "plugin_loader" not in sys.modules:
     _pl.handle_plugin = MagicMock()
     sys.modules["plugin_loader"] = _pl
 
-import requests
-
-import brain
+import brain  # noqa: E402
+import requests  # noqa: E402
 
 
 def test_ask_friday_stream_success(monkeypatch):
