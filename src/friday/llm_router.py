@@ -10,6 +10,8 @@ load_dotenv()
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "auto").lower()
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
+OLLAMA_TIMEOUT = float(os.getenv("OLLAMA_TIMEOUT", "15"))
+OLLAMA_STRICT_OFFLINE = os.getenv("OLLAMA_STRICT_OFFLINE", "false").lower() in ("1", "true", "yes")
 GROQ_API_KEY = os.getenv("GROQ_API")
 GEMINI_API_KEY = os.getenv("GEMINI_API")
 logger = get_logger("LLMRouter")
@@ -131,8 +133,10 @@ def route_command(user_input):
             "format": "json",
             "stream": False
         }
-        res = requests.post(url, json=payload, timeout=15).json()
-        text = res["message"]["content"]
+        res = requests.post(url, json=payload, timeout=OLLAMA_TIMEOUT)
+        res.raise_for_status()
+        data = res.json()
+        text = data["message"]["content"]
         result = _clean_json_text(text)
         logger.info(f"[Ollama Router] '{user_input}' → intent={result.get('intent')}, args={result.get('args')}")
         return result
@@ -142,10 +146,14 @@ def route_command(user_input):
         try:
             return _try_ollama()
         except Exception as e:
-            logger.warning(f"[Ollama Router] failed for '{user_input}': {e}. Falling back to cloud providers.")
+            logger.warning(f"[Ollama Router] failed for '{user_input}': {e}.")
+            if OLLAMA_STRICT_OFFLINE:
+                logger.info("[Ollama Router] Strict offline mode enabled; skipping cloud providers.")
+            else:
+                logger.info("Falling back to cloud providers.")
 
-    # Primary: Groq Qwen
-    if client:
+    # Primary: Groq Qwen (skipped in strict offline mode)
+    if client and not (LLM_PROVIDER == "ollama" and OLLAMA_STRICT_OFFLINE):
         try:
             response = client.chat.completions.create(
                 model="qwen/qwen3.8-27b",
@@ -162,8 +170,8 @@ def route_command(user_input):
         except Exception as e:
             logger.warning(f"[Groq Router] failed for '{user_input}': {e}. Falling back to Gemini.")
 
-    # Fallback: Gemini Flash
-    if GEMINI_API_KEY:
+    # Fallback: Gemini Flash (skipped in strict offline mode)
+    if GEMINI_API_KEY and not (LLM_PROVIDER == "ollama" and OLLAMA_STRICT_OFFLINE):
         try:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={GEMINI_API_KEY}"
             payload = {
