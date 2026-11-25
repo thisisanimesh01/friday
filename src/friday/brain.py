@@ -18,6 +18,8 @@ logger = get_logger("Brain")
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "auto").lower()
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
+OLLAMA_TIMEOUT = float(os.getenv("OLLAMA_TIMEOUT", "20"))
+OLLAMA_STRICT_OFFLINE = os.getenv("OLLAMA_STRICT_OFFLINE", "false").lower() in ("1", "true", "yes")
 GROQ_API_KEY = os.getenv("GROQ_API")
 GEMINI_API_KEY = os.getenv("GEMINI_API")
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API")
@@ -175,8 +177,10 @@ def ask_friday(prompt):
             "messages": messages,
             "stream": False
         }
-        res = requests.post(url, json=data, timeout=20).json()
-        content = res["message"]["content"]
+        res = requests.post(url, json=data, timeout=OLLAMA_TIMEOUT)
+        res.raise_for_status()
+        payload = res.json()
+        content = payload["message"]["content"]
         if "</think>" in content:
             content = content.split("</think>")[-1].strip()
         return content
@@ -186,6 +190,12 @@ def ask_friday(prompt):
             return _try_ollama()
         except Exception as e:
             logger.error(f"Ollama failed: {e}")
+            if OLLAMA_STRICT_OFFLINE:
+                past = retrieve_memory(prompt)
+                if past:
+                    best = past[0]
+                    return f"I'm offline, but from what I remember: {best[2]}"
+                return "I'm offline and don't have enough memory yet."
 
     if client:
         try:
