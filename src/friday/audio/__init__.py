@@ -6,6 +6,9 @@ from friday.audio.processing import calculate_rms_and_peak, pcm16_to_wav_bytes
 from friday.audio.recorder import AudioRecorder
 from friday.audio.playback import PlaybackManager
 from friday.audio.session import ContinuousListener, ConversationState
+from friday.audio.expression import EXPRESSION_PROFILES, ExpressionTuning, SpeechExpression, select_expression_for_context
+from friday.audio.speech_segmenter import SpeechSegmenter
+from friday.audio.streaming_tts import StreamingTTSCoordinator
 from friday.audio.stt import TranscriptionResult, WhisperEngine
 from friday.audio.tts import TTSEngine, Voice, prepare_speech_text
 from friday.audio.vad import SpeechEndpointDetector, VADDecision, VoiceActivityDetector
@@ -20,9 +23,14 @@ __all__ = [
     "ContinuousListener",
     "ConversationState",
     "DEFAULT_AUDIO_CONFIG",
+    "EXPRESSION_PROFILES",
+    "ExpressionTuning",
     "ListenerState",
     "PlaybackManager",
     "SpeechEndpointDetector",
+    "SpeechExpression",
+    "SpeechSegmenter",
+    "StreamingTTSCoordinator",
     "TTSEngine",
     "TranscriptionResult",
     "VADDecision",
@@ -41,4 +49,5 @@ __all__ = [
     "list_microphones",
     "pcm16_to_wav_bytes",
     "prepare_speech_text",
+    "select_expression_for_context",
 ]

@@ -130,6 +130,17 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Validate a local audio reference file (format, duration, signal RMS).",
     )
+    parser.add_argument(
+        "--stream-speech",
+        action="store_true",
+        help="Synthesize and play speech incrementally at sentence boundaries as the LLM generates tokens.",
+    )
+    parser.add_argument(
+        "--expression",
+        choices=["gentle", "happy", "focused", "concerned", "supportive", "neutral", "confident"],
+        default=None,
+        help="Explicitly set delivery expression style for speech synthesis.",
+    )
     return parser
 
 
@@ -188,8 +199,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             print("Speech synthesis test failed.")
             return 1
 
-    if args.speak:
+    if args.speak or args.stream_speech:
         os.environ["TTS_ENABLED"] = "true"
+        if args.stream_speech:
+            os.environ["TTS_STREAM_ENABLED"] = "true"
+        if args.expression:
+            os.environ["TTS_EXPRESSION"] = args.expression
         if args.voice:
             os.environ["TTS_VOICE"] = args.voice
         if args.voice_profile:
