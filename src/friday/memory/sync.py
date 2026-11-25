@@ -2,10 +2,13 @@ import requests
 from logger import get_logger
 from memory.local import get_unsynced, mark_synced
 from memory.supabase import save_cloud
+from runtime_mode import is_offline_mode
 
 logger = get_logger("MemorySync")
 
 def is_online():
+    if is_offline_mode():
+        return False
     try:
         requests.get("https://www.google.com", timeout=2)
         return True

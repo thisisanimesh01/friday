@@ -131,7 +131,14 @@ def execute_command(command):
     if is_dangerous(command):
         return "Blocked: Dangerous command detected."
 
+    from runtime_mode import is_offline_mode
+
     command_lower = command.lower()
+    if is_offline_mode() and any(
+        kw in command_lower
+        for kw in ("weather", "news", "headline", "location", "distance", "youtube", "spotify", "http://", "https://", "www.", "open ")
+    ):
+        return "This feature requires internet access, which is disabled in offline mode."
     routed = route_command(command)
     intent = routed.get("intent", "chat")
     args = routed.get("args", {})

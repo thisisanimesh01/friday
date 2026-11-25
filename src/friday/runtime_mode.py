@@ -2,6 +2,20 @@
 
 import os
 import socket
+from urllib.parse import urlparse
+
+
+_LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
+
+
+def validate_local_ollama_url(url: str) -> bool:
+    """Return True only if url targets a local loopback host."""
+    try:
+        parsed = urlparse(url)
+        host = (parsed.hostname or "").lower()
+        return parsed.scheme in ("http", "https") and host in _LOCAL_HOSTS
+    except ValueError:
+        return False
 
 
 def get_mode() -> str:
