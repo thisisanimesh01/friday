@@ -141,6 +141,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Explicitly set delivery expression style for speech synthesis.",
     )
+    parser.add_argument(
+        "--hands-free",
+        action="store_true",
+        help="Run Friday in unified hands-free conversation mode (wake-word standby, speech streaming, and spoken barge-in).",
+    )
     return parser
 
 
@@ -274,6 +279,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         listener.start()
         print(f"Wake-word listener active. Say '{engine.phrase}' to activate Friday.")
         print("Press Ctrl+C to stop listening.")
+        return 0
+
+    if args.hands_free:
+        from friday.audio.conversation import HandsFreeController
+
+        controller = HandsFreeController(session_timeout=args.session_timeout)
+        controller.start()
+        print(f"Hands-free conversation active (Session timeout: {args.session_timeout}s).")
+        print("Say 'Hey Friday' to start, follow-up naturally, or speak 'Stop' to barge-in.")
+        print("Say 'Stop listening' to shut down microphone, or press Ctrl+C.")
         return 0
 
     if args.continuous:
