@@ -22,7 +22,11 @@ dev = [
     "ruff>=0.4",
 ]
 
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [tool.pytest.ini_options]
+pythonpath = ["src", "src/friday"]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
