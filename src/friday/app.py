@@ -14,7 +14,7 @@ os.environ["HF_HUB_OFFLINE"] = "1"
 os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
 os.environ["TRANSFORMERS_NO_ADVISORY_WARNINGS"] = "1"
 
-from brain import ask_friday
+from brain import ask_friday, ask_friday_stream
 from commands import execute_command, extract_filename
 from memory.memory_manager import store_memory, retrieve_memory, trigger_summarization, get_current_summary, get_rich_context
 from sandbox.file_manager import delete_file, empty_trash, delete_folder
@@ -237,8 +237,17 @@ def run_friday():
             enhanced_input = (context + "\n\n" if context else "") + f"User: {user_input}\nFriday:"
 
             trigger_summarization()
+            response_chunks = []
             try:
-                response = ask_friday(enhanced_input)
+                print("Friday: ", end="", flush=True)
+                for chunk in ask_friday_stream(enhanced_input):
+                    print(chunk, end="", flush=True)
+                    response_chunks.append(chunk)
+                print()  # newline after completion
+                response = "".join(response_chunks).strip()
+            except KeyboardInterrupt:
+                print("\n[Response interrupted by user]")
+                response = "".join(response_chunks).strip()
             except Exception:
                 past = retrieve_memory(user_input)
                 if past:
@@ -248,9 +257,10 @@ def run_friday():
                         response += f"- You said: \"{user_text}\" → I replied: \"{bot_text}\"\n"
                 else:
                     response = "I'm offline and don't have enough memory yet."
+                display_response(response)
 
-            display_response(response)
-            threading.Thread(target=store_memory, args=(user_input, response), daemon=True).start()
+            if response:
+                threading.Thread(target=store_memory, args=(user_input, response), daemon=True).start()
 
 if __name__ == "__main__":
     run_friday()

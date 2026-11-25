@@ -1,4 +1,6 @@
+import json
 import os
+from collections.abc import Generator
 import requests
 from dotenv import load_dotenv
 from groq import Groq
@@ -18,9 +20,12 @@ logger = get_logger("Brain")
 
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "auto").lower()
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:3b")
 OLLAMA_TIMEOUT = float(os.getenv("OLLAMA_TIMEOUT", "20"))
 OLLAMA_STRICT_OFFLINE = os.getenv("OLLAMA_STRICT_OFFLINE", "false").lower() in ("1", "true", "yes")
+OLLAMA_STREAM = os.getenv("OLLAMA_STREAM", "true").lower() in ("1", "true", "yes")
+OLLAMA_NUM_CTX = int(os.getenv("OLLAMA_NUM_CTX", "2048"))
+OLLAMA_KEEP_ALIVE = os.getenv("OLLAMA_KEEP_ALIVE", "5m")
 GROQ_API_KEY = os.getenv("GROQ_API")
 GEMINI_API_KEY = os.getenv("GEMINI_API")
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API")
@@ -143,6 +148,78 @@ def generate_response(user_input):
         return f"Chill bro, I got you. You said: {user_input}"
     else:
         return f"Processing request: {user_input}"
+
+def ask_friday_stream(prompt: str) -> Generator[str, None, None]:
+    """Stream response tokens progressively. Yields string chunks.
+
+    Handles KeyboardInterrupt / cancellation cleanly without losing state.
+    """
+    prompt = sanitize_prompt(prompt)
+
+    system_prompt = (
+        "you are a female AI assistant named Friday. "
+        "You are Friday, a highly intelligent personal AI assistant like Jarvis. "
+        "You are friendly, calm, slightly witty, emotionally aware, and supportive. "
+        "You speak like a human, not a robot. "
+        "You can help with tasks, answer questions, and have engaging conversations. "
+        "You are not just an assistant, but a companion who understands and cares about the user. "
+        "Keep responses natural, short, and engaging. "
+        "You can show light humor, care, and personality. "
+        "Address the user like a friend. "
+        "You remember things about the user. "
+        "Avoid long structured lists unless necessary. "
+        "Avoid saying 'you want to' regularly in conversations. "
+        "Talk in Hinglish sometimes. "
+        "Don't always start the converstation with Sir or Boss. Use it occasionally. "
+        "Call the user 'boss' or 'sir' occasionally."
+    )
+
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": prompt}
+    ]
+
+    def _stream_ollama() -> Generator[str, None, None]:
+        url = f"{OLLAMA_BASE_URL}/api/chat"
+        data = {
+            "model": OLLAMA_MODEL,
+            "messages": messages,
+            "stream": True,
+            "options": {
+                "num_ctx": OLLAMA_NUM_CTX,
+            },
+            "keep_alive": OLLAMA_KEEP_ALIVE,
+        }
+        res = requests.post(url, json=data, timeout=OLLAMA_TIMEOUT, stream=True)
+        res.raise_for_status()
+        for line in res.iter_lines():
+            if not line:
+                continue
+            chunk = json.loads(line.decode("utf-8"))
+            msg = chunk.get("message", {})
+            content = msg.get("content", "")
+            if content:
+                yield content
+            if chunk.get("done", False):
+                break
+
+    if LLM_PROVIDER in ("ollama", "auto"):
+        try:
+            yield from _stream_ollama()
+            return
+        except Exception as e:
+            logger.error(f"Ollama stream failed: {e}")
+            if is_offline_mode() or OLLAMA_STRICT_OFFLINE or not cloud_fallback_allowed():
+                past = retrieve_memory(prompt)
+                if past:
+                    yield f"I'm offline, but from what I remember: {past[0][2]}"
+                else:
+                    yield "I'm offline and don't have enough memory yet."
+                return
+
+    # Fallback to non-streaming ask_friday if streaming not applicable or failed
+    yield ask_friday(prompt)
+
 
 def ask_friday(prompt):
     prompt = sanitize_prompt(prompt)

@@ -24,6 +24,46 @@ CHAT_PROMPTS = [
 ]
 
 
+def query_ollama_stream(
+    prompt: str,
+    model: str = DEFAULT_MODEL,
+    base_url: str = DEFAULT_URL,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "stream": True,
+    }
+    body = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        f"{base_url}/api/chat",
+        data=body,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    t0 = time.perf_counter()
+    ttft = None
+    chunks = []
+    with urllib.request.urlopen(req, timeout=60) as resp:
+        for line in resp:
+            if not line:
+                continue
+            if ttft is None:
+                ttft = time.perf_counter() - t0
+            data = json.loads(line.decode("utf-8"))
+            msg = data.get("message", {}).get("content", "")
+            if msg:
+                chunks.append(msg)
+            if data.get("done", False):
+                break
+    elapsed = time.perf_counter() - t0
+    return {
+        "content": "".join(chunks),
+        "ttft_s": round(ttft or 0.0, 3),
+        "elapsed_s": round(elapsed, 3),
+    }
+
+
 def query_ollama(
     prompt: str,
     model: str = DEFAULT_MODEL,
