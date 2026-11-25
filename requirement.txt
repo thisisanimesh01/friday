@@ -1,5 +1,0 @@
-groq
-python-dotenv
-requests
-yt-dlp
-psutil
