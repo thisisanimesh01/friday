@@ -89,7 +89,7 @@ def fetch_indian_news_fast(params, num_articles):
 
         return news_list
 
-    except:
+    except (requests.RequestException, ValueError, KeyError) as e:
         return []
 
 def fetch_newsapi(query, cleaned_query, category, num_articles, is_indian):

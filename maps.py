@@ -103,5 +103,5 @@ def get_location():
 
         return f"You are in {city}, {region}, {country}"
 
-    except:
+    except (requests.RequestException, ValueError, KeyError) as e:
         return "Couldn't detect your location."
