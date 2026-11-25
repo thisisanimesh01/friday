@@ -1,16 +1,11 @@
 ## Summary
 <!-- Briefly describe what this PR does and why. -->
 
+## Changes
+<!-- List the key changes made in this PR. -->
+
+## Testing
+<!-- Describe how this PR was tested. -->
+
 ## Related Issue
 Closes #
-
-## Type of Change
-- [ ] Bug fix
-- [ ] New feature
-- [ ] Refactor / code quality
-- [ ] Documentation / repository hygiene
-
-## Checklist
-- [ ] Code runs cleanly without syntax or import errors
-- [ ] `.env` and sensitive credentials are not committed
-- [ ] Documentation / `README.md` updated if needed
