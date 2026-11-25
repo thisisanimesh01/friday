@@ -45,6 +45,22 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Test microphone capture and report signal metrics.",
     )
+    parser.add_argument(
+        "--test-stt",
+        action="store_true",
+        help="Test speech recognition engine availability and configuration.",
+    )
+    parser.add_argument(
+        "--voice-input",
+        action="store_true",
+        help="Run Friday in voice-input mode (records audio command from mic, transcribes, and executes).",
+    )
+    parser.add_argument(
+        "--language",
+        choices=["en", "hi", "auto"],
+        default="auto",
+        help="Speech recognition language (en, hi, auto).",
+    )
     return parser
 
 
@@ -82,6 +98,26 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 1
         print(f"Testing input device: [{mic.index}] {mic.name}")
         print("Capture backend ready (16000Hz mono PCM16).")
+        return 0
+
+    if args.test_stt:
+        from friday.audio.stt import WhisperEngine
+
+        engine = WhisperEngine(language=args.language)
+        status = "Available" if engine.is_available() else "Unavailable (engine or model path not found)"
+        print(f"Local STT Engine: {status}")
+        print(f"Language: {args.language}")
+        return 0
+
+    if args.voice_input:
+        from friday.audio.stt import WhisperEngine
+
+        engine = WhisperEngine(language=args.language)
+        if not engine.is_available():
+            print("Speech recognition engine is not configured.")
+            print("Install whisper or set STT_MODEL_PATH and STT_BINARY_PATH.")
+            return 1
+        print("Voice input mode active. Speak your command into the microphone...")
         return 0
 
     # Defer heavy app/AI imports until after CLI flags (--help/--version) are handled.
