@@ -61,6 +61,22 @@ def build_parser() -> argparse.ArgumentParser:
         default="auto",
         help="Speech recognition language (en, hi, auto).",
     )
+    parser.add_argument(
+        "--test-wake-word",
+        action="store_true",
+        help="Test wake-word detection engine availability and configuration.",
+    )
+    parser.add_argument(
+        "--wake-word",
+        action="store_true",
+        help="Run Friday in wake-word listener mode (activates on 'Hey Friday').",
+    )
+    parser.add_argument(
+        "--wake-sensitivity",
+        type=float,
+        default=0.5,
+        help="Wake-word detection sensitivity threshold (0.0 to 1.0, default 0.5).",
+    )
     return parser
 
 
@@ -118,6 +134,29 @@ def main(argv: Sequence[str] | None = None) -> int:
             print("Install whisper or set STT_MODEL_PATH and STT_BINARY_PATH.")
             return 1
         print("Voice input mode active. Speak your command into the microphone...")
+        return 0
+
+    if args.test_wake_word:
+        from friday.audio.wake_word import WakeWordEngine
+
+        engine = WakeWordEngine(sensitivity=args.wake_sensitivity)
+        status = "Available" if engine.is_available() else "Unavailable (no wake word engine or model found)"
+        print(f"Wake-Word Engine: {status} (Backend: {engine.engine_type})")
+        print(f"Phrase: '{engine.phrase}' | Sensitivity: {engine.sensitivity}")
+        return 0
+
+    if args.wake_word:
+        from friday.audio.wake_word import WakeWordEngine, WakeWordListener
+
+        engine = WakeWordEngine(sensitivity=args.wake_sensitivity)
+        if not engine.is_available():
+            print("Wake-word engine is not configured or unavailable.")
+            print("Install openwakeword or configure WAKE_WORD_MODEL_PATH.")
+            return 1
+        listener = WakeWordListener(engine=engine)
+        listener.start()
+        print(f"Wake-word listener active. Say '{engine.phrase}' to activate Friday.")
+        print("Press Ctrl+C to stop listening.")
         return 0
 
     # Defer heavy app/AI imports until after CLI flags (--help/--version) are handled.
