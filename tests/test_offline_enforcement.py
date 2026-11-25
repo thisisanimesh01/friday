@@ -1,7 +1,19 @@
-import commands
+import sys
+from types import ModuleType
+from unittest.mock import MagicMock
+
 import requests
 from friday import runtime_mode
 from memory import sync
+
+# Stub heavy optional dependencies (e.g. numpy in memory_manager) for lightweight CI
+if "memory.memory_manager" not in sys.modules:
+    _stub = ModuleType("memory.memory_manager")
+    _stub.store_memory = MagicMock()
+    _stub.retrieve_memory = MagicMock(return_value=[])
+    sys.modules["memory.memory_manager"] = _stub
+
+import commands  # noqa: E402
 
 
 def test_validate_local_ollama_url():
