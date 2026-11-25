@@ -88,6 +88,30 @@ def build_parser() -> argparse.ArgumentParser:
         default=30.0,
         help="Inactivity timeout in seconds before continuous conversation returns to standby (default 30.0).",
     )
+    parser.add_argument(
+        "--speak",
+        action="store_true",
+        help="Enable spoken audio response output using local text-to-speech.",
+    )
+    parser.add_argument(
+        "--list-voices",
+        action="store_true",
+        help="List available local speech synthesis voices.",
+    )
+    parser.add_argument(
+        "--voice",
+        type=str,
+        default=None,
+        help="Specify local voice name for speech synthesis (e.g. 'Samantha', 'Lekha').",
+    )
+    parser.add_argument(
+        "--test-tts",
+        type=str,
+        nargs="?",
+        const="Hello, I am Friday. All systems are operational.",
+        default=None,
+        help="Test local speech synthesis by speaking a sample phrase.",
+    )
     return parser
 
 
@@ -102,7 +126,40 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.mode:
         os.environ["FRIDAY_MODE"] = args.mode
 
-    if args.list_mics:
+    if args.list_voices:
+        from friday.audio.tts import TTSEngine
+
+        engine = TTSEngine()
+        voices = engine.list_voices()
+        if not voices:
+            print("No local speech synthesis voices found (or 'say' binary unavailable).")
+            return 1
+        print("Available Local Speech Synthesis Voices:")
+        for v in voices:
+            print(f"  [{v.locale}] {v.name} - {v.example}")
+        return 0
+
+    if args.test_tts:
+        from friday.audio.tts import TTSEngine
+
+        engine = TTSEngine(voice=args.voice)
+        if not engine.is_available():
+            print("Local TTS engine is not available on this system.")
+            return 1
+        print(f"Testing local speech synthesis (Voice: {engine.voice}, Rate: {engine.rate} wpm)...")
+        print(f"Speaking: '{args.test_tts}'")
+        success = engine.speak(args.test_tts, voice=args.voice)
+        if success:
+            print("Speech synthesis test completed successfully.")
+            return 0
+        else:
+            print("Speech synthesis test failed.")
+            return 1
+
+    if args.speak:
+        os.environ["TTS_ENABLED"] = "true"
+        if args.voice:
+            os.environ["TTS_VOICE"] = args.voice
         from friday.audio.devices import list_microphones
 
         mics = list_microphones()
