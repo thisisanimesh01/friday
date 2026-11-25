@@ -1,8 +1,33 @@
 import json
+import sys
+from types import ModuleType
 from unittest.mock import MagicMock
 
-import brain
+# Stub heavy/optional dependencies before importing brain
+if "memory.memory_manager" not in sys.modules:
+    _mm = ModuleType("memory.memory_manager")
+    _mm.load_personality = MagicMock()
+    _mm.save_personality = MagicMock()
+    _mm.update_context = MagicMock(return_value="")
+    _mm.store_memory = MagicMock()
+    _mm.retrieve_memory = MagicMock(return_value=[])
+    _mm.search_memory = MagicMock(return_value=[])
+    sys.modules["memory.memory_manager"] = _mm
+
+if "memory.local" not in sys.modules:
+    _ml = ModuleType("memory.local")
+    _ml.get_all = MagicMock(return_value=[])
+    sys.modules["memory.local"] = _ml
+
+if "plugin_loader" not in sys.modules:
+    _pl = ModuleType("plugin_loader")
+    _pl.load_plugins = MagicMock()
+    _pl.handle_plugin = MagicMock()
+    sys.modules["plugin_loader"] = _pl
+
 import requests
+
+import brain
 
 
 def test_ask_friday_stream_success(monkeypatch):
@@ -49,7 +74,6 @@ def test_ask_friday_stream_cancellation(monkeypatch):
     mock_resp.iter_lines.return_value = infinite_chunks()
     monkeypatch.setattr(requests, "post", lambda *args, **kwargs: mock_resp)
 
-    # Calling generator should stop on KeyboardInterrupt cleanly when consumed
     gen = brain.ask_friday_stream("test")
     first_token = next(gen)
     assert first_token == "Token 1"
