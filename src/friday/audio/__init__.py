@@ -5,6 +5,7 @@ from friday.audio.devices import AudioDevice, get_default_microphone, list_micro
 from friday.audio.processing import calculate_rms_and_peak, pcm16_to_wav_bytes
 from friday.audio.recorder import AudioRecorder
 from friday.audio.playback import PlaybackManager
+from friday.audio.conversation import HandsFreeController
 from friday.audio.session import ContinuousListener, ConversationState
 from friday.audio.expression import EXPRESSION_PROFILES, ExpressionTuning, SpeechExpression, select_expression_for_context
 from friday.audio.speech_segmenter import SpeechSegmenter
@@ -25,6 +26,7 @@ __all__ = [
     "DEFAULT_AUDIO_CONFIG",
     "EXPRESSION_PROFILES",
     "ExpressionTuning",
+    "HandsFreeController",
     "ListenerState",
     "PlaybackManager",
     "SpeechEndpointDetector",
