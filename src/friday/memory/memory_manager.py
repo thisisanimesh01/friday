@@ -22,6 +22,7 @@ from memory.local import (
     get_all,
     get_all_preferences,
     init_db,
+    prune_memories_older_than,
     save_local,
     set_preference,
 )
@@ -31,6 +32,7 @@ from memory.supabase import save_cloud
 from memory.intelligence import (
     extract_preference_category,
     find_conflicting_memories,
+    sanitize_memory_text,
     should_store_memory,
 )
 from logger import get_logger
@@ -105,6 +107,34 @@ def cosine_sim(a, b):
 _session_personality = dict(DEFAULT_PERSONALITY)
 _personality_lock = threading.Lock()
 
+# ── Privacy & Memory Toggles ──────────────────────────────────────────────────
+_memory_enabled = os.getenv("FRIDAY_MEMORY_ENABLED", "true").lower() in ("1", "true", "yes")
+_private_session = False
+
+
+def is_memory_enabled() -> bool:
+    """Return True if persistent memory writing and storage are enabled."""
+    return _memory_enabled and not _private_session
+
+
+def set_memory_enabled(enabled: bool):
+    """Enable or disable long-term memory operations."""
+    global _memory_enabled
+    _memory_enabled = bool(enabled)
+    logger.info(f"Memory persistence enabled set to: {_memory_enabled}")
+
+
+def is_private_session() -> bool:
+    """Return True if active session is in private/incognito mode (zero persistence)."""
+    return _private_session
+
+
+def set_private_session(private: bool):
+    """Toggle private session mode."""
+    global _private_session
+    _private_session = bool(private)
+    logger.info(f"Private session mode set to: {_private_session}")
+
 
 def load_personality() -> dict:
     """Return in-memory session personality and context state."""
@@ -137,6 +167,21 @@ def store_memory(
         sim_threshold: Cosine similarity cutoff for treating queries as duplicates
         intelligent_filter: If True, checks for sensitive info, ephemeral noise, and fact corrections
     """
+    if not is_memory_enabled():
+        logger.debug("Memory is disabled or session is private; skipping persistence.")
+        # Update transient full_history in personality for intra-session context only
+        try:
+            user_clean = user.strip() if user else ""
+            bot_text = bot.get("message", str(bot)).strip() if isinstance(bot, dict) else str(bot).strip()
+            data = load_personality()
+            fh = data.get("full_history", [])
+            fh.append({"user": user_clean, "bot": bot_text})
+            data["full_history"] = fh[-30:]
+            save_personality(data)
+        except Exception:
+            pass
+        return None
+
     if not user or not user.strip():
         return None
 
@@ -237,25 +282,144 @@ def search_memory(query: str, min_score: float = 0.25) -> list:
 
 
 def delete_memory(identifier: str) -> bool:
-    """Delete memories by integer ID or string query match.
+    """Delete memories by integer ID, preference category, or string query match.
 
     Parameters:
-        identifier: Either a string representation of record ID or substring to match.
+        identifier: Either a string representation of record ID, preference category, or substring.
     """
     if not identifier:
         return False
 
     success = False
-    if identifier.strip().isdigit():
-        mid = int(identifier.strip())
-        success = delete_memory_by_id(mid)
+    cleaned = identifier.strip()
+
+    # 1. If identifier matches a user preference category, remove from preferences table
+    prefs = get_all_preferences()
+    if cleaned.lower() in prefs:
+        delete_preference(cleaned.lower())
+        success = True
+
+    # 2. Integer ID check
+    if cleaned.isdigit():
+        mid = int(cleaned)
+        if delete_memory_by_id(mid):
+            success = True
     else:
-        cnt = delete_memory_by_text(identifier.strip())
-        success = cnt > 0
+        cnt = delete_memory_by_text(cleaned)
+        if cnt > 0:
+            success = True
 
     if success:
         reload_memory_store()
+        # Invalidate active session full_history to prevent recalling deleted text in the same session
+        try:
+            data = load_personality()
+            fh = data.get("full_history", [])
+            data["full_history"] = [
+                turn for turn in fh
+                if cleaned.lower() not in turn.get("user", "").lower() and cleaned.lower() not in turn.get("bot", "").lower()
+            ]
+            save_personality(data)
+        except Exception:
+            pass
+
     return success
+
+
+def forget_memory(command_type: str, target: str | None = None) -> tuple[bool, str]:
+    """Execute natural-language forget instruction and invalidate caches.
+
+    Returns:
+        (success: bool, status_message: str)
+    """
+    if command_type == "forget_all":
+        count = clear_memory()
+        return True, f"I have completely forgotten all stored memories and preferences ({count} items deleted)."
+
+    if command_type == "forget_preferences":
+        prefs = get_all_preferences()
+        for cat in prefs:
+            delete_preference(cat)
+        return True, "I have forgotten all learned user profile preferences."
+
+    if command_type == "forget_category" and target:
+        delete_preference(target)
+        delete_memory_by_text(target)
+        reload_memory_store()
+        return True, f"I have forgotten your {target.replace('_', ' ')} preference."
+
+    if command_type == "forget_query" and target:
+        deleted = delete_memory(target)
+        # Also check if target corresponds to a project or preference value
+        prefs = get_all_preferences()
+        for cat, val in list(prefs.items()):
+            if target.lower() in val.lower() or val.lower() in target.lower():
+                delete_preference(cat)
+                deleted = True
+        if deleted:
+            return True, f"I have forgotten everything matching '{target}'."
+        else:
+            return False, f"I could not find any memories matching '{target}' to forget."
+
+    return False, "Unrecognized forget command."
+
+
+def export_memory_json(file_path: str) -> tuple[bool, str]:
+    """Export all stored conversations and user preferences to a local JSON file."""
+    try:
+        data = {
+            "version": "1.0",
+            "exported_at": str(np.datetime64("now")),
+            "preferences": get_all_preferences(),
+            "conversations": [
+                {"id": r[0], "user": r[1], "bot": r[2]}
+                for r in get_all()
+            ],
+        }
+        target_path = Path(file_path).resolve()
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(target_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+        return True, f"Exported {len(data['conversations'])} memories and {len(data['preferences'])} preferences to {target_path}."
+    except Exception as e:
+        return False, f"Memory export failed: {e}"
+
+
+def import_memory_json(file_path: str) -> tuple[bool, str]:
+    """Import and restore memories and preferences from a local JSON file."""
+    try:
+        source_path = Path(file_path).resolve()
+        if not source_path.is_file():
+            return False, f"Export file not found: {source_path}"
+        with open(source_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        imported_mems = 0
+        imported_prefs = 0
+        for cat, val in data.get("preferences", {}).items():
+            set_preference(cat, val)
+            imported_prefs += 1
+
+        for item in data.get("conversations", []):
+            u = item.get("user")
+            b = item.get("bot")
+            if u:
+                store_memory(u, b, deduplicate=True)
+                imported_mems += 1
+
+        reload_memory_store()
+        return True, f"Imported {imported_mems} memories and {imported_prefs} preferences from {source_path}."
+    except Exception as e:
+        return False, f"Memory import failed: {e}"
+
+
+def prune_retention_policy(retention_days: int) -> int:
+    """Automated retention policy: prune conversation records older than retention_days."""
+    count = prune_memories_older_than(retention_days)
+    if count > 0:
+        reload_memory_store()
+        logger.info(f"Retention policy pruned {count} memories older than {retention_days} days.")
+    return count
 
 
 def clear_memory() -> int:
@@ -290,7 +454,7 @@ def retrieve_memory(query: str, limit: int = 10, min_similarity: float = 0.0) ->
         query_embedding = np.array(query_embedding)
     except Exception:
         # Fallback to recency order
-        return [(r[0], r[1], r[2]) for r in rows[-limit:]]
+        return [(r[0], sanitize_memory_text(r[1]), sanitize_memory_text(r[2])) for r in rows[-limit:]]
 
     scored = []
     for row in rows:
@@ -305,7 +469,7 @@ def retrieve_memory(query: str, limit: int = 10, min_similarity: float = 0.0) ->
 
     scored.sort(reverse=True, key=lambda x: x[0])
     top_rows = [r[1] for r in scored[:limit]]
-    return [(row[0], row[1], row[2]) for row in top_rows]
+    return [(row[0], sanitize_memory_text(row[1]), sanitize_memory_text(row[2])) for row in top_rows]
 
 
 def get_rich_context(query: str, n_recent: int = 6, n_semantic: int = 5) -> str:

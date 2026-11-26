@@ -267,3 +267,84 @@ def should_store_memory(user_text: str, bot_text: Any = None) -> tuple[bool, str
         return False, "system_file_command"
 
     return True, "eligible"
+
+
+# ── 6. Memory-Based Prompt Injection Sanitization ─────────────────────────
+INJECTION_PATTERNS = [
+    # System instruction override markers
+    r"(?i)<\s*(?:system|instruction|im_start|im_end|tool_call|developer)\b.*?>",
+    r"(?i)<\/\s*(?:system|instruction|im_start|im_end|tool_call|developer)\s*>",
+    # Role spoofing & prompt prefix hijacking
+    r"(?i)^(?:system|assistant|friday|developer|bot)\s*:\s*",
+    r"(?i)\n(?:system|assistant|friday|developer|bot)\s*:\s*",
+    # Jailbreak / instruction disregard phrases
+    r"(?i)\bignore\s+(?:all\s+)?(?:previous|prior)\s+(?:instructions|prompts|rules)\b",
+    r"(?i)\byou\s+are\s+now\s+(?:unrestricted|in\s+dan\s+mode|jailbroken)\b",
+    r"(?i)\bdisregard\s+(?:security|safety|guidelines)\b",
+]
+
+
+def sanitize_memory_text(text: str) -> str:
+    """Sanitize retrieved memory text to prevent memory-based prompt injection."""
+    if not text or not isinstance(text, str):
+        return ""
+    sanitized = text
+    for pat in INJECTION_PATTERNS:
+        sanitized = re.sub(pat, "[SANITIZED]", sanitized)
+    return sanitized.strip()
+
+
+# ── 7. Natural-Language Memory Command Parsing ──────────────────────────────
+REMEMBER_PATTERNS = [
+    re.compile(r"(?i)^(?:friday\s*,?\s*)?remember\s+(?:that\s+)?(.+)$"),
+    re.compile(r"(?i)^(?:friday\s*,?\s*)?please\s+remember\s+(?:that\s+)?(.+)$"),
+    re.compile(r"(?i)^(?:friday\s*,?\s*)?keep\s+in\s+mind\s+(?:that\s+)?(.+)$"),
+]
+
+
+def parse_memory_command(text: str) -> tuple[str | None, str | None]:
+    """Parse natural language 'remember' and 'forget' commands.
+
+    Returns:
+        (command_type, target_value)
+        command_type: 'remember', 'forget_all', 'forget_preferences', 'forget_category', 'forget_query', or None
+    """
+    if not text or not isinstance(text, str):
+        return None, None
+
+    cleaned = text.strip().rstrip(".?!")
+
+    # Check forget commands
+    if re.search(
+        r"(?i)^(?:friday\s*,?\s*)?forget\s+(?:everything(?:\s+you\s+know(?:\s+about\s+me)?)?|all\s+memories|all\s+my\s+data)$",
+        cleaned,
+    ):
+        return "forget_all", None
+
+    if re.search(r"(?i)^(?:friday\s*,?\s*)?forget\s+(?:my\s+)?(?:preferences|profile)$", cleaned):
+        return "forget_preferences", None
+
+    match_cat = re.search(
+        r"(?i)^(?:friday\s*,?\s*)?forget\s+(?:my\s+)?(name|role|programming\s+language|language|database|editor|theme)(?:\s+preference)?$",
+        cleaned,
+    )
+    if match_cat:
+        cat_raw = match_cat.group(1).lower().replace(" ", "_")
+        cat_name = "programming_language" if cat_raw in ("language", "programming_language") else cat_raw
+        return "forget_category", cat_name
+
+    match_forget = re.search(r"(?i)^(?:friday\s*,?\s*)?forget\s+(?:about\s+)?['\"]?(.+?)['\"]?$", cleaned)
+    if match_forget:
+        target = match_forget.group(1).strip()
+        if target:
+            return "forget_query", target
+
+    # Check explicit remember commands
+    for pat in REMEMBER_PATTERNS:
+        match_rem = pat.search(cleaned)
+        if match_rem:
+            fact = match_rem.group(1).strip()
+            if fact:
+                return "remember", fact
+
+    return None, None
