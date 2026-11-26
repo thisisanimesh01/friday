@@ -182,7 +182,27 @@ def record_audit_log(
     error: str | None = None,
     duration_s: float = 0.0,
 ):
-    """Write a privacy-sanitized structured audit record to disk."""
+    """Write a privacy-sanitized structured audit record to disk.
+
+    Private-session suppression: Suppressed completely during private sessions
+    to prevent logging user actions or activity to disk.
+    """
+    try:
+        from memory.memory_manager import is_private_session
+        if is_private_session():
+            logger.debug(f"Private session active; suppressing audit log for '{action_name}'.")
+            return
+    except Exception:
+        pass
+
+    try:
+        from friday.memory.memory_manager import is_private_session
+        if is_private_session():
+            logger.debug(f"Private session active; suppressing audit log for '{action_name}'.")
+            return
+    except Exception:
+        pass
+
     try:
         # Sanitize parameters against sensitive info
         sanitized_params = {}

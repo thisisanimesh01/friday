@@ -11,6 +11,7 @@ Provides:
 from __future__ import annotations
 
 import difflib
+import os
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -58,9 +59,9 @@ def discover_installed_apps() -> dict[str, Path]:
     """Scan standard macOS application directories and return dict of name -> .app Path."""
     apps: dict[str, Path] = {}
     for search_dir in APP_SEARCH_PATHS:
-        if not search_dir.is_dir():
-            continue
         try:
+            if not search_dir.is_dir():
+                continue
             for item in search_dir.iterdir():
                 if item.suffix == ".app":
                     app_name = item.stem
@@ -114,16 +115,36 @@ def launch_application(app_name: str) -> dict[str, Any]:
 
 
 def quit_application(app_name: str, force: bool = False) -> dict[str, Any]:
-    """Quit an application gracefully. Force-quit requires explicit confirmation."""
+    """Quit an application gracefully. Force-quit terminates specific verified PIDs only."""
     if not app_name:
         return {"error": "Application name required"}
 
     resolved = resolve_app_name(app_name) or app_name
 
     if force:
+        # Verified process-specific termination:
+        # 1. Query System Events or pgrep for exact process names, avoiding loose pkill regexes
         try:
-            subprocess.check_call(["pkill", "-9", "-f", resolved], timeout=3.0)
-            return {"status": "force_quit", "application": resolved}
+            # Look up pids matching the exact process name
+            pid_script = f'tell application "System Events" to get id of (every process whose name is "{resolved}")'
+            pid_out = subprocess.check_output(["osascript", "-e", pid_script], text=True, timeout=3.0).strip()
+            pids = [int(p.strip()) for p in pid_out.split(",") if p.strip().isdigit()]
+
+            if not pids:
+                # Fallback to exact pgrep matching
+                try:
+                    pgrep_out = subprocess.check_output(["pgrep", "-x", resolved], text=True, timeout=2.0).strip()
+                    pids = [int(p.strip()) for p in pgrep_out.split() if p.strip().isdigit()]
+                except Exception:
+                    pids = []
+
+            if not pids:
+                return {"error": f"Cannot force-quit '{resolved}': no running process with exact name found."}
+
+            for pid in pids:
+                os.kill(pid, 9)
+
+            return {"status": "force_quit", "application": resolved, "pids_terminated": pids}
         except Exception as e:
             return {"error": f"Failed to force-quit '{resolved}': {e}"}
 

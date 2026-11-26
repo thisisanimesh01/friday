@@ -8,10 +8,13 @@ from friday import runtime_mode
 
 # Stub heavy optional dependencies (numpy, supabase) for lightweight CI
 if "memory.memory_manager" not in sys.modules:
-    _mm = ModuleType("memory.memory_manager")
-    _mm.store_memory = MagicMock()
-    _mm.retrieve_memory = MagicMock(return_value=[])
-    sys.modules["memory.memory_manager"] = _mm
+    try:
+        from memory import memory_manager as _mm
+    except Exception:
+        _mm = ModuleType("memory.memory_manager")
+        _mm.store_memory = MagicMock()
+        _mm.retrieve_memory = MagicMock(return_value=[])
+        sys.modules["memory.memory_manager"] = _mm
 
 if "memory.supabase" not in sys.modules:
     _sb = ModuleType("memory.supabase")

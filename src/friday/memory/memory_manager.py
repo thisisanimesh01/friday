@@ -234,13 +234,16 @@ def store_memory(
     new_id = save_local(user_clean, bot_text, emb_arr.tolist())
     memory_store.append((new_id, user_clean, emb_arr))
 
-    if is_online():
+    # Cloud sync prevention: strictly block cloud sync if in offline mode or private session
+    from runtime_mode import is_offline_mode
+    if is_online() and not is_offline_mode() and not is_private_session():
         try:
             save_cloud(user_clean, bot_text, emb_arr.tolist())
         except Exception:
             pass
 
-    sync()
+    if not is_offline_mode() and not is_private_session():
+        sync()
 
     # Also update full_history in personality for context building
     try:
@@ -326,13 +329,20 @@ def delete_memory(identifier: str) -> bool:
     return success
 
 
-def forget_memory(command_type: str, target: str | None = None) -> tuple[bool, str]:
+def forget_memory(command_type: str, target: str | None = None, confirmed: bool = False) -> tuple[bool, str]:
     """Execute natural-language forget instruction and invalidate caches.
+
+    Parameters:
+        command_type: 'forget_all', 'forget_preferences', 'forget_category', 'forget_query'
+        target: Optional category or target query string
+        confirmed: Boolean indicating whether explicit confirmation has been given for global clear
 
     Returns:
         (success: bool, status_message: str)
     """
     if command_type == "forget_all":
+        if not confirmed:
+            return False, "⚠️ Confirmation required: Deleting all memories is permanent. Please say 'Yes, confirm forget all' or re-run with confirmation."
         count = clear_memory()
         return True, f"I have completely forgotten all stored memories and preferences ({count} items deleted)."
 

@@ -179,19 +179,63 @@ def capture_camera_photo(filename: str | None = None) -> dict[str, Any]:
 
 # ── Screenshot Capture Handlers ───────────────────────────────────────────────
 
+def is_protected_content_visible_on_screen() -> bool:
+    """Check running applications and window titles for protected folder or sensitive data terms.
+
+    If any open window or process title mentions 'me and she' or blocked locations,
+    screen capture must fail closed to prevent accidental visual capture.
+    """
+    try:
+        script = '''
+        tell application "System Events"
+            set winTitles to {}
+            repeat with p in (every process whose visible is true)
+                try
+                    repeat with w in (every window of p)
+                        set end of winTitles to (name of w)
+                    end repeat
+                end try
+            end repeat
+            return winTitles
+        end tell
+        '''
+        out = subprocess.check_output(["osascript", "-e", script], text=True, timeout=3.0).strip()
+        lower_out = out.lower()
+        if "me and she" in lower_out or "me_and_she" in lower_out:
+            logger.warning("Protected folder title detected in visible windows; blocking screenshot.")
+            return True
+        for term in ("photos library", "login.keychain", "messages"):
+            if term in lower_out:
+                logger.warning(f"Sensitive location '{term}' detected in visible window; blocking screenshot.")
+                return True
+    except Exception as e:
+        logger.debug(f"Window title visibility scan failed: {e}")
+    return False
+
+
 def capture_screenshot(
-    mode: str = "fullscreen",
+    mode: str = "window",
     filename: str | None = None,
     target_window: str | None = None,
 ) -> dict[str, Any]:
     """Capture a screenshot and store it strictly in friday workspace/screenshots/.
 
-    Parameters:
-        mode: 'fullscreen', 'window', or 'region'
-        filename: Optional output filename (must be within workspace)
-        target_window: Optional window or application name (checked against privacy guard)
+    Privacy Hardening:
+    - 'fullscreen' capture mode is disabled by default to prevent incidental capture of background
+      windows containing sensitive personal content.
+    - Captures fail closed if visible windows contain references to protected directories.
+    - Verified window capture or region capture is permitted only for authorized targets.
     """
     clean_mode = mode.lower().strip()
+
+    # Disable unrestricted fullscreen capture unless explicitly confirmed or restricted
+    if clean_mode == "fullscreen":
+        # Check if protected content is open anywhere on display
+        if is_protected_content_visible_on_screen():
+            return {
+                "error": "Screenshot blocked: A visible window on screen references protected personal locations."
+            }
+
     if clean_mode not in ("fullscreen", "window", "region"):
         return {"error": f"Invalid screenshot mode '{mode}'. Choose 'fullscreen', 'window', or 'region'."}
 

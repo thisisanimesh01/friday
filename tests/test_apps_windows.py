@@ -55,12 +55,14 @@ def test_quit_application_graceful(mock_call):
     assert "tell application \"Calculator\" to quit" in mock_call.call_args[0][0][2]
 
 
-@patch("subprocess.check_call")
-def test_quit_application_force(mock_call):
-    mock_call.return_value = 0
+@patch("os.kill")
+@patch("subprocess.check_output")
+def test_quit_application_force(mock_output, mock_kill):
+    mock_output.return_value = "12345\n"
     res = quit_application("Calculator", force=True)
     assert res.get("status") == "force_quit"
-    mock_call.assert_called_once_with(["pkill", "-9", "-f", "Calculator"], timeout=3.0)
+    assert res.get("pids_terminated") == [12345]
+    mock_kill.assert_called_once_with(12345, 9)
 
 
 @patch("subprocess.check_call")

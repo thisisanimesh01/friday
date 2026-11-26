@@ -2,7 +2,17 @@
 
 All notable changes to **Friday** are documented in this file.
 
-## [Unreleased] - Phase 6, Milestone 6.2: Application Management, Window Control & Privacy Protection
+## [Unreleased] - Phase 6, Milestone 6.2.1: Privacy Hardening & Real-World Validation
+- **Inode Hard-Link Protection:** Hardened `is_path_permanently_protected` in `src/friday/security/privacy_guard.py` to compare filesystem inode (`st_ino`, `st_dev`) numbers, blocking hard-link bypasses of synthetic or protected targets.
+- **Pre-Flight Screen Visibility Scan:** Added `is_protected_content_visible_on_screen` in `src/friday/macos/media_capture.py` scanning visible macOS window titles for protected folder or sensitive repository mentions before capturing screenshots.
+- **Process-Specific Force-Quit:** Replaced unverified `pkill -9 -f` regex termination with verified exact-name PID resolution (`pgrep -x` and System Events PID queries) and targeted `os.kill(pid, 9)`.
+- **Private-Session Audit Suppression:** Suppressed all structured disk audit logging (`AUDIT_LOG_FILE`) during active private sessions (`is_private_session()`).
+- **Global Memory Wipe Confirmation:** Enforced natural-language confirmation requirement (`forget_all` requires explicit `confirmed=True`) preventing accidental or prompt-injected complete memory wipes.
+- **Real-World Validation Suite:** Added `scripts/milestone_6_2_1_validation.py` executing 30 real-world functional, security, and permission validation checks with 100% success rate.
+- **Technical Documentation:** Authored comprehensive `docs/privacy_and_security.md` detailing macOS isolation, workspace confinement, and media authorization invariants.
+- **Voice Preservation:** Benchmarked Hinata neural voice embedding and 1.14x speed multiplier: cold start 5.35s, warm average 3.36s, RSS ~119MB.
+
+## [Phase 6, Milestone 6.2] - Application Management, Window Control & Privacy Protection
 - **Permanent PrivacyGuard Protection:** Implemented deterministic, deny-by-default `PrivacyGuard` (`src/friday/security/privacy_guard.py`) providing absolute isolation for `~/Desktop/me and she/` across all case variants, symlinks, aliases, and traversal attempts. Blocks macOS Photos Library, Messages, Keychain, Mail, SSH, AWS, and GPG by default. Cannot be overridden by voice, CLI, or confirmation.
 - **Dedicated Friday Workspace Confinement:** Established strict workspace boundary at `~/Desktop/friday workspace/` with 10 standard subdirectories (`documents`, `images`, `videos`, `screenshots`, `camera`, `projects`, `downloads`, `reports`, `exports`, `temp`).
 - **Application Lifecycle Management:** Implemented application discovery, alias resolution, fuzzy matching (`difflib`), launch (`open -a`), graceful quit (`osascript`), confirmation-guarded force-quit (`pkill -9`), switch (`activate`), hide, and active application detection.

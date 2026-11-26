@@ -139,6 +139,7 @@ python3 -m compileall -q .
 * **Phase 6 — macOS Control & Automation:**
   - **Milestone 6.1:** macOS Control Foundation & Permission Framework — **Completed**.
   - **Milestone 6.2:** Application Management, Window Control & Privacy Protection — **Completed**.
+  - **Milestone 6.2.1:** Privacy Hardening & Real-World Validation — **Completed**.
   - **Milestone 6.3:** AppleScript & Shortcuts Automation — **Next**.
   - **Milestone 6.4:** System Settings & Audio/Display Controls.
   - **Milestone 6.5:** Multi-Step Desktop Workflows.
