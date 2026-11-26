@@ -23,7 +23,14 @@ def test_prepare_speech_text():
 
 
 def test_tts_engine_defaults_and_availability():
-    engine = TTSEngine(voice="Samantha", rate=185)
+    engine = TTSEngine(voice="hinata", rate=165)
+    assert engine.voice == "hinata"
+    assert engine.rate == 165
+    assert engine.engine_type == "neural"
+
+
+def test_tts_engine_native_mode():
+    engine = TTSEngine(voice="Samantha", rate=185, engine_type="native")
     assert engine.voice == "Samantha"
     assert engine.rate == 185
     assert engine.engine_type == "native"
@@ -47,13 +54,13 @@ def test_tts_engine_hindi_voice_selection():
 
 
 def test_tts_mocked_speak_execution():
-    engine = TTSEngine()
-    engine._say_bin = "/usr/bin/say"
+    engine = TTSEngine(engine_type="native")
+    engine.native_engine._say_bin = "/usr/bin/say"
     mock_proc = MagicMock()
     mock_proc.returncode = 0
     mock_proc.wait.return_value = 0
 
-    with patch.object(engine, "is_available", return_value=True):
+    with patch.object(engine.native_engine, "is_available", return_value=True):
         with patch("subprocess.Popen", return_value=mock_proc) as mock_popen:
             success = engine.speak("Hello Friday")
             assert success is True

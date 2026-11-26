@@ -70,3 +70,11 @@ build/
 .pytest_cache/
 .coverage
 htmlcov/
+# Audio samples and weights
+samples/
+*.wav
+*.bin
+*.onnx
+*.npy
+*.pth
+*.index

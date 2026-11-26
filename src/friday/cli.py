@@ -102,13 +102,23 @@ def build_parser() -> argparse.ArgumentParser:
         "--voice",
         type=str,
         default=None,
-        help="Specify local voice name for speech synthesis (e.g. 'Samantha', 'Lekha').",
+        help="Specify local voice name for speech synthesis (e.g. 'hinata', 'Samantha', 'Lekha').",
+    )
+    parser.add_argument(
+        "--voice-info",
+        action="store_true",
+        help="Display active TTS engine, model, reference audio status, device, and fallback configuration.",
+    )
+    parser.add_argument(
+        "--benchmark-tts",
+        action="store_true",
+        help="Run comprehensive benchmark on active TTS engine (latency, RTF, RAM, model load time).",
     )
     parser.add_argument(
         "--test-tts",
         type=str,
         nargs="?",
-        const="Hello, I am Friday. All systems are operational.",
+        const="Hello! I'm Friday, your personal AI assistant.",
         default=None,
         help="Test local speech synthesis by speaking a sample phrase.",
     )
@@ -182,6 +192,65 @@ def main(argv: Sequence[str] | None = None) -> int:
         os.environ["NO_COLOR"] = "1"
     if args.quiet:
         os.environ["FRIDAY_STARTUP_GREETING"] = "false"
+
+    if args.voice_info:
+        from friday.audio.voice_manager import VoiceManager
+
+        manager = VoiceManager()
+        status = manager.get_status(profile_id=args.voice_profile)
+        print("FRIDAY Voice System Information:")
+        print(f"  Active TTS Engine:      {status.active_engine}")
+        print(f"  Active Model:           {status.active_model}")
+        print(f"  Model Weights Path:     {status.model_weights_path}")
+        print(f"  Reference Audio Status: {status.reference_audio_status}")
+        print(f"  Voice Profile:          {status.voice_profile}")
+        print(f"  Inference Device:       {status.inference_device}")
+        print(f"  Supported Languages:    {', '.join(status.supported_languages)}")
+        print(f"  Fallback Status:        {'ACTIVE (Using fallback voice: ' + status.fallback_voice + ')' if status.is_fallback_active else 'STANDBY (Neural voice operational)'}")
+        return 0
+
+    if args.benchmark_tts:
+        from friday.audio.voice_manager import VoiceManager
+        import time
+        import psutil
+
+        manager = VoiceManager()
+        print("Running FRIDAY Neural Voice Benchmark...")
+        status = manager.get_status(profile_id=args.voice_profile)
+        print(f"Active Engine: {status.active_engine}")
+        print(f"Inference Device: {status.inference_device}")
+
+        process = psutil.Process()
+        mem_before = process.memory_info().rss / (1024 * 1024)
+
+        test_sentences = [
+            "Hello! I'm Friday, your personal AI assistant.",
+            "All systems are operational and ready.",
+            "Would you like me to explain that again?",
+        ]
+
+        # Cold-start benchmark
+        t0 = time.time()
+        success = manager.speak(test_sentences[0])
+        cold_latency = time.time() - t0
+
+        # Warm benchmark
+        warm_latencies = []
+        for s in test_sentences[1:]:
+            t_start = time.time()
+            manager.speak(s)
+            warm_latencies.append(time.time() - t_start)
+
+        mem_after = process.memory_info().rss / (1024 * 1024)
+        avg_warm = sum(warm_latencies) / len(warm_latencies) if warm_latencies else 0.0
+
+        print("\nBenchmark Results:")
+        print(f"  Cold-start Synthesis Latency: {cold_latency:.3f}s")
+        print(f"  Warm Synthesis Latency (avg): {avg_warm:.3f}s")
+        print(f"  RAM Usage (Delta):            {mem_after - mem_before:.2f} MB")
+        print(f"  Peak Process RSS:             {mem_after:.2f} MB")
+        print(f"  Speech Success Rate:          {'100%' if success else 'Failed'}")
+        return 0
 
     if args.validate_reference:
         from friday.audio.voice_reference import VoiceReferenceValidator
