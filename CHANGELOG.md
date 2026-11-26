@@ -2,7 +2,15 @@
 
 All notable changes to **Friday** are documented in this file.
 
-## [Unreleased] - Phase 5, Milestone 5.2: Contextual Memory Improvements
+## [Unreleased] - Phase 5, Milestone 5.3: Intelligent Memory & Personalization
+- **Intelligent Memory Selection:** Added filtering in `src/friday/memory/intelligence.py` to prevent saving sensitive information (passwords, API keys, tokens, credit cards) and transient/ephemeral noise (greetings, short acknowledgments, diagnostics).
+- **Preference Recognition & Upserting:** Extracted and categorized user preferences (name, primary programming language, project, database, editor, UI theme) into dedicated `user_preferences` SQLite table.
+- **Contradiction Resolution & Fact Updates:** Implemented fact correction detection (e.g. "Actually I switched to...") that updates preferences and purges contradictory or superseded past memories.
+- **Personalized Context Assembly:** Injected recognized user preferences directly into LLM prompts in `src/friday/brain.py` alongside short-term dialogue context and relevant semantic memories.
+- **CLI Commands:** Added `--list-preferences` and updated `--list-memory` in `src/friday/cli.py` for full transparency and inspection.
+- **Preserved Approved Voice:** Hinata neural voice embedding and 1.14x speed multiplier preserved permanently.
+
+## [Phase 5, Milestone 5.2] - Contextual Memory Improvements
 - **Short-Term Conversational Context:** Injected recent multi-turn conversation context (`full_history`) directly into local LLM generation.
 - **Persistent Long-Term Memory:** Stored conversation turns and memory items offline in SQLite (`memory.db`) with zero external cloud dependencies.
 - **Semantic Retrieval & Cosine Similarity:** Integrated feature hashing and vector similarity scoring to automatically recall relevant facts and preferences during conversation and post-restart sessions.

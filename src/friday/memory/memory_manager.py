@@ -14,10 +14,25 @@ import numpy as np
 from pathlib import Path
 from dotenv import load_dotenv
 
-from memory.local import clear_all_memory, delete_memory_by_id, delete_memory_by_text, get_all, init_db, save_local
+from memory.local import (
+    clear_all_memory,
+    delete_memory_by_id,
+    delete_memory_by_text,
+    delete_preference,
+    get_all,
+    get_all_preferences,
+    init_db,
+    save_local,
+    set_preference,
+)
 from memory.embedder import embed
 from memory.sync import is_online, sync
 from memory.supabase import save_cloud
+from memory.intelligence import (
+    extract_preference_category,
+    find_conflicting_memories,
+    should_store_memory,
+)
 from logger import get_logger
 
 load_dotenv()
@@ -106,7 +121,13 @@ def save_personality(data: dict):
 
 # ── Core memory operations ─────────────────────────────────────────────────────
 
-def store_memory(user: str, bot, deduplicate: bool = True, sim_threshold: float = 0.95):
+def store_memory(
+    user: str,
+    bot,
+    deduplicate: bool = True,
+    sim_threshold: float = 0.95,
+    intelligent_filter: bool = True,
+):
     """Persist one conversation turn to SQLite + in-memory cache with deduplication.
 
     Parameters:
@@ -114,6 +135,7 @@ def store_memory(user: str, bot, deduplicate: bool = True, sim_threshold: float 
         bot: Bot response string or dict
         deduplicate: If True, avoids saving duplicate or nearly identical queries (> sim_threshold)
         sim_threshold: Cosine similarity cutoff for treating queries as duplicates
+        intelligent_filter: If True, checks for sensitive info, ephemeral noise, and fact corrections
     """
     if not user or not user.strip():
         return None
@@ -124,13 +146,37 @@ def store_memory(user: str, bot, deduplicate: bool = True, sim_threshold: float 
     else:
         bot_text = str(bot).strip()
 
+    # Intelligent filtering: skip sensitive credentials and transient noise
+    if intelligent_filter:
+        eligible, reason = should_store_memory(user_clean, bot_text)
+        if not eligible:
+            logger.debug(f"Intelligent filter skipped storing turn: reason='{reason}' text='{user_clean[:40]}'")
+            return None
+
     embedding = embed(user_clean)
     try:
         emb_arr = np.array(embedding)
     except Exception:
         emb_arr = np.zeros(1)
 
-    # 1. Deduplication check: check if the exact same turn or near-identical query exists
+    # Fact correction & contradiction handling:
+    # If the new statement updates an existing preference/fact, purge older conflicting memories
+    category, pref_val = extract_preference_category(user_clean)
+    if category and pref_val:
+        set_preference(category, pref_val)
+        logger.info(f"Updated user preference: {category} -> {pref_val}")
+
+    if intelligent_filter:
+        existing_rows = get_all()
+        conflicts = find_conflicting_memories(user_clean, existing_rows)
+        for conflict in conflicts:
+            conflict_id = conflict[0]
+            logger.info(f"Superseding contradictory memory #{conflict_id}: '{conflict[1]}'")
+            delete_memory_by_id(conflict_id)
+        if conflicts:
+            reload_memory_store()
+
+    # Deduplication check: check if the exact same turn or near-identical query exists
     if deduplicate and memory_store:
         for _id, prev_user, prev_emb in reversed(memory_store[-25:]):
             if user_clean.lower() == prev_user.lower():
@@ -223,6 +269,14 @@ def clear_memory() -> int:
     data["summary"] = ""
     save_personality(data)
     return cnt
+
+
+def get_user_preferences() -> dict[str, str]:
+    """Return dictionary of persisted user preferences."""
+    try:
+        return get_all_preferences()
+    except Exception:
+        return {}
 
 
 def retrieve_memory(query: str, limit: int = 10, min_similarity: float = 0.0) -> list:

@@ -30,6 +30,15 @@ def init_db():
         if "created_at" not in cols:
             c.execute("ALTER TABLE conversations ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
 
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS user_preferences (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            category TEXT UNIQUE,
+            value TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+
         conn.commit()
         conn.close()
 
@@ -62,6 +71,45 @@ def save_local(user, bot, embedding):
         return new_id
 
 
+def set_preference(category: str, value: str):
+    """Upsert a user preference category and value."""
+    conn = sqlite3.connect(DB, check_same_thread=False)
+    c = conn.cursor()
+    c.execute(
+        """
+        INSERT INTO user_preferences (category, value, updated_at)
+        VALUES (?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(category) DO UPDATE SET
+            value = excluded.value,
+            updated_at = CURRENT_TIMESTAMP
+        """,
+        (category, value),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_all_preferences() -> dict[str, str]:
+    """Return dictionary of category -> value user preferences."""
+    conn = sqlite3.connect(DB, check_same_thread=False)
+    c = conn.cursor()
+    c.execute("SELECT category, value FROM user_preferences")
+    rows = c.fetchall()
+    conn.close()
+    return {row[0]: row[1] for row in rows}
+
+
+def delete_preference(category: str) -> bool:
+    """Delete a user preference category."""
+    conn = sqlite3.connect(DB, check_same_thread=False)
+    c = conn.cursor()
+    c.execute("DELETE FROM user_preferences WHERE category = ?", (category,))
+    deleted = c.rowcount > 0
+    conn.commit()
+    conn.close()
+    return deleted
+
+
 def delete_memory_by_id(memory_id: int) -> bool:
     """Delete a memory record by its integer primary key ID."""
     conn = sqlite3.connect(DB, check_same_thread=False)
@@ -86,11 +134,12 @@ def delete_memory_by_text(query: str) -> int:
 
 
 def clear_all_memory() -> int:
-    """Clear all records from local memory database."""
+    """Clear all records from local memory database and preferences table."""
     conn = sqlite3.connect(DB, check_same_thread=False)
     c = conn.cursor()
     c.execute("DELETE FROM conversations")
     deleted_count = c.rowcount
+    c.execute("DELETE FROM user_preferences")
     conn.commit()
     conn.close()
     return deleted_count
