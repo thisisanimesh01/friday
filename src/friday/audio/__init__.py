@@ -15,6 +15,9 @@ from friday.audio.tts import TTSEngine, Voice, prepare_speech_text
 from friday.audio.vad import SpeechEndpointDetector, VADDecision, VoiceActivityDetector
 from friday.audio.voice_profile import VoiceProfile, VoiceRegistry
 from friday.audio.voice_reference import VoiceReferenceValidation, VoiceReferenceValidator
+from friday.audio.voice_manager import VoiceManager, VoiceSystemStatus
+from friday.audio.engines.neural import NeuralTTSEngine
+from friday.audio.engines.native import NativeTTSEngine
 from friday.audio.wake_word import ListenerState, WakeWordEngine, WakeWordEvent, WakeWordListener
 
 __all__ = [
@@ -42,6 +45,10 @@ __all__ = [
     "VoiceReferenceValidation",
     "VoiceReferenceValidator",
     "VoiceRegistry",
+    "VoiceManager",
+    "VoiceSystemStatus",
+    "NeuralTTSEngine",
+    "NativeTTSEngine",
     "WakeWordEngine",
     "WakeWordEvent",
     "WakeWordListener",
