@@ -50,7 +50,9 @@ def handle_input(user_input):
     # 0. Check for natural-language memory privacy / forget commands
     cmd_type, target = parse_memory_command(user_input)
     if cmd_type and cmd_type.startswith("forget"):
-        _success, msg = forget_memory(cmd_type, target)
+        # Check if user confirms global wipe
+        is_confirmed = "confirm" in user_input.lower() or "yes" in user_input.lower()
+        _success, msg = forget_memory(cmd_type, target, confirmed=is_confirmed)
         return msg
 
     if cmd_type == "remember" and target:

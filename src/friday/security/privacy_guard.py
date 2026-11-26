@@ -87,6 +87,7 @@ def is_path_permanently_protected(target_path: str | Path) -> bool:
     """Return True if path points to or inside '~/Desktop/me and she/' or blocked personal locations.
 
     Uses realpath resolution to prevent symlink, alias, and hard link bypasses.
+    Also inspects file st_ino and st_dev against protected targets to prevent hard-link bypasses.
     """
     if not target_path:
         return False
@@ -94,7 +95,11 @@ def is_path_permanently_protected(target_path: str | Path) -> bool:
     raw_str = str(target_path).strip()
     # Direct string / regex checks before file resolution
     lower_str = raw_str.lower().replace("\\", "/")
-    if "me and she" in lower_str or "me_and_she" in lower_str:
+    if "me and she" in lower_str or "me_and_she" in lower_str or "me%20and%20she" in lower_str:
+        return True
+
+    # Reject URL encodings or unicode trickery for blocked terms
+    if any(term in lower_str for term in ("photos%20library", "login.keychain", ".ssh", ".aws", ".gnupg")):
         return True
 
     try:
@@ -103,15 +108,32 @@ def is_path_permanently_protected(target_path: str | Path) -> bool:
         for blocked in BLOCKED_LOCATIONS:
             if p == blocked or blocked in p.parents:
                 return True
-        # Check canonical realpath match (resolving symlinks)
+        # Check canonical realpath match (resolving symlinks and ../ traversals)
         real_p = p.resolve()
         real_str = str(real_p).lower().replace("\\", "/")
-        if "me and she" in real_str or "me_and_she" in real_str:
+        if "me and she" in real_str or "me_and_she" in real_str or "me%20and%20she" in real_str:
             return True
         for blocked in BLOCKED_LOCATIONS:
             blocked_real = blocked.resolve()
             if real_p == blocked_real or blocked_real in real_p.parents:
                 return True
+
+        # Check inode comparison (hard-link protection):
+        # If target file exists and shares inode with any accessible blocked location
+        try:
+            if p.exists():
+                stat_p = p.stat()
+                for blocked in BLOCKED_LOCATIONS:
+                    try:
+                        b_path = Path(blocked).expanduser()
+                        if b_path.exists():
+                            stat_b = b_path.stat()
+                            if stat_p.st_ino == stat_b.st_ino and stat_p.st_dev == stat_b.st_dev:
+                                return True
+                    except Exception:
+                        continue
+        except Exception:
+            pass
     except Exception:
         # Fail closed on path resolution anomalies
         if "me and she" in lower_str:

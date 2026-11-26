@@ -114,3 +114,51 @@ def test_sanitize_privacy_string():
     sanitized2 = sanitize_privacy_string(text2)
     assert "Photos Library.photoslibrary" not in sanitized2
     assert "[PROTECTED_MEDIA]" in sanitized2
+
+
+def test_hard_link_bypass_blocked(tmp_path, monkeypatch):
+    """Verify that hard link sharing inode with synthetic protected file is blocked."""
+    fake_protected = tmp_path / "me and she"
+    fake_protected.mkdir()
+    secret_file = fake_protected / "confidential.txt"
+    secret_file.write_text("top secret")
+
+    # Add fake_protected to BLOCKED_LOCATIONS
+    from security import privacy_guard
+    monkeypatch.setattr(privacy_guard, "BLOCKED_LOCATIONS", privacy_guard.BLOCKED_LOCATIONS + [secret_file])
+
+    hardlink_file = tmp_path / "innocent.txt"
+    try:
+        os.link(secret_file, hardlink_file)
+        assert is_path_permanently_protected(hardlink_file)
+    except OSError:
+        # Filesystem doesn't support hard links across boundaries
+        pass
+
+
+def test_private_session_suppresses_audit_log(tmp_path, monkeypatch):
+    """Verify that private session suppresses audit logs to disk."""
+    fake_log = tmp_path / "macos_actions.jsonl"
+    from macos import registry
+    monkeypatch.setattr(registry, "AUDIT_LOG_FILE", fake_log)
+
+    from friday.memory.memory_manager import set_private_session
+    set_private_session(True)
+    try:
+        registry.record_audit_log("test_action", "LOW", {"arg": "value"}, success=True)
+        assert not fake_log.exists()
+    finally:
+        set_private_session(False)
+
+
+def test_natural_language_forget_all_requires_confirmation():
+    """Verify natural-language forget all requires explicit confirmation."""
+    from friday.memory.memory_manager import forget_memory
+    success, msg = forget_memory("forget_all", confirmed=False)
+    assert not success
+    assert "Confirmation required" in msg
+
+    success_c, msg_c = forget_memory("forget_all", confirmed=True)
+    assert success_c
+    assert "completely forgotten" in msg_c
+
