@@ -74,12 +74,13 @@ class VoiceManager:
         else:
             ref_status = "Not found (using default style vector)"
 
+        speed_str = f" [Speed: {self.neural.speed:.2f}x]" if hasattr(self.neural, "speed") and self.neural.speed is not None else ""
         return VoiceSystemStatus(
             active_engine=active_engine,
             active_model=active_model,
             model_weights_path=str(self.neural.model_path) if not is_fallback else "N/A (Built-in macOS)",
             reference_audio_status=ref_status,
-            voice_profile=f"{profile.display_name} ({profile.profile_id})",
+            voice_profile=f"{profile.display_name} ({profile.profile_id}){speed_str}",
             inference_device=neural_info.device if not is_fallback else "macOS CoreAudio",
             supported_languages=neural_info.supported_languages if not is_fallback else ["en", "hi"],
             is_fallback_active=is_fallback,
@@ -92,6 +93,7 @@ class VoiceManager:
         text: str,
         voice: Optional[str] = None,
         rate: Optional[int] = None,
+        speed: Optional[float] = None,
         force_native: bool = False,
     ) -> bool:
         """Synthesize and speak text, prioritizing neural voice with explicit fallback."""
@@ -109,12 +111,16 @@ class VoiceManager:
             return self.native.speak(text, voice=voice, rate=rate)
 
         # Primary neural synthesis
-        # Calculate speed from rate if rate provided (standard ~180 wpm = speed 1.0)
-        speed = 0.95
-        if rate:
-            speed = round(rate / 185.0, 2)
+        # If speed explicitly passed, respect it; otherwise calculate from rate or use configured neural speed
+        target_speed = speed
+        if target_speed is None:
+            if rate:
+                # 190 wpm corresponds to 1.09 (+15% speed)
+                target_speed = round(rate / 175.0, 2)
+            else:
+                target_speed = self.neural.speed
 
-        success = self.neural.speak(text, speed=speed)
+        success = self.neural.speak(text, speed=target_speed)
         if not success:
             logger.warning("Neural speech synthesis failed. Falling back to native macOS voice.")
             return self.native.speak(text, voice=voice, rate=rate)

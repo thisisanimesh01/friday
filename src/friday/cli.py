@@ -105,6 +105,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Specify local voice name for speech synthesis (e.g. 'hinata', 'Samantha', 'Lekha').",
     )
     parser.add_argument(
+        "--voice-speed",
+        type=float,
+        default=None,
+        help="Speaking speed multiplier for neural speech synthesis (e.g. 1.09 for +15%%, 1.0 for standard).",
+    )
+    parser.add_argument(
         "--voice-info",
         action="store_true",
         help="Display active TTS engine, model, reference audio status, device, and fallback configuration.",
@@ -192,6 +198,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         os.environ["NO_COLOR"] = "1"
     if args.quiet:
         os.environ["FRIDAY_STARTUP_GREETING"] = "false"
+
+    if args.voice_speed:
+        os.environ["TTS_SPEED"] = str(args.voice_speed)
 
     if args.voice_info:
         from friday.audio.voice_manager import VoiceManager
