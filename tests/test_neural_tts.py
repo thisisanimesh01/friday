@@ -1,14 +1,11 @@
 """Unit and regression tests for Neural Voice and Voice Manager integration."""
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-import numpy as np
-import pytest
+from unittest.mock import MagicMock
 
 from friday.audio.engines.native import NativeTTSEngine
 from friday.audio.engines.neural import NeuralTTSEngine, NeuralVoiceInfo
 from friday.audio.voice_manager import VoiceManager, VoiceSystemStatus
-from friday.audio.voice_profile import VoiceProfile, VoiceRegistry
 
 
 def test_neural_engine_initialization_and_availability():
