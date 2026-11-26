@@ -26,6 +26,8 @@ try:
         model = None
         fallback_msg = f"SentenceTransformer unavailable: {e}"
         logging.getLogger("embedder").warning(fallback_msg)
+except ImportError:
+    model = None
 finally:
     sys.stdout = _saved_stdout
     sys.stderr = _saved_stderr

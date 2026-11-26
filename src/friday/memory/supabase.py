@@ -1,5 +1,8 @@
 import os
-from supabase import create_client
+try:
+    from supabase import create_client
+except ImportError:
+    create_client = None
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -7,7 +10,7 @@ load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY) if (SUPABASE_URL and SUPABASE_KEY) else None
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY) if (create_client and SUPABASE_URL and SUPABASE_KEY) else None
 
 def save_cloud(user, bot, embedding):
     if not supabase:
