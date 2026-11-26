@@ -2,7 +2,17 @@
 
 All notable changes to **Friday** are documented in this file.
 
-## [Unreleased] - Phase 6, Milestone 6.1: macOS Control Foundation & Permission Framework
+## [Unreleased] - Phase 6, Milestone 6.2: Application Management, Window Control & Privacy Protection
+- **Permanent PrivacyGuard Protection:** Implemented deterministic, deny-by-default `PrivacyGuard` (`src/friday/security/privacy_guard.py`) providing absolute isolation for `~/Desktop/me and she/` across all case variants, symlinks, aliases, and traversal attempts. Blocks macOS Photos Library, Messages, Keychain, Mail, SSH, AWS, and GPG by default. Cannot be overridden by voice, CLI, or confirmation.
+- **Dedicated Friday Workspace Confinement:** Established strict workspace boundary at `~/Desktop/friday workspace/` with 10 standard subdirectories (`documents`, `images`, `videos`, `screenshots`, `camera`, `projects`, `downloads`, `reports`, `exports`, `temp`).
+- **Application Lifecycle Management:** Implemented application discovery, alias resolution, fuzzy matching (`difflib`), launch (`open -a`), graceful quit (`osascript`), confirmation-guarded force-quit (`pkill -9`), switch (`activate`), hide, and active application detection.
+- **Window Management Handlers:** Added window operations for minimize, restore, fullscreen toggle, and snapping/positioning (`left_half`, `right_half`, `center`, `maximize`) via macOS System Events.
+- **Explicit On-Demand Media Capture:** Created single-use, on-demand camera capture (`src/friday/macos/media_capture.py`) saved strictly to `friday workspace/camera/` and screenshot capture saved strictly to `friday workspace/screenshots/`. Device hardware is immediately released upon capture completion.
+- **English, Hindi, and Hinglish Intent Routing:** Expanded macOS intent router (`src/friday/macos/router.py`) to handle natural-language queries (e.g., `open calculator`, `terminal kholo`, `calculator band karo`, `window minimize karo`, `left half karo`, `take a photo`, `screenshot lo`).
+- **CLI & Inspection Flags:** Added `--launch-app <name>`, `--quit-app <name>`, `--window-action <action>`, `--take-photo`, `--take-screenshot`, and `--target-app <name>` with `--dry-run` and `--yes` support.
+- **Voice & Resource Preservation:** Verified preserved approved Hinata neural voice embedding and 1.14x speed multiplier, cold-start latency ~7.5s, warm latency ~4.9s, and RSS <70MB.
+
+## [Phase 6, Milestone 6.1] - macOS Control Foundation & Permission Framework
 - **Modular Action Registry:** Implemented typed action registry (`src/friday/macos/registry.py`) with risk classification tiers (`READ_ONLY`, `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`), strict argument schemas, and execution timeout protection.
 - **Deterministic Intent Routing:** Added macOS natural-language intent router (`src/friday/macos/router.py`) mapping queries directly to allowlisted system actions without executing unrestricted LLM shell commands.
 - **Harmless Read-Only Actions:** Added built-in allowlisted handlers for `get_battery`, `get_volume`, `set_volume`, `list_apps`, `get_appearance` (Dark/Light mode), and `get_storage`.

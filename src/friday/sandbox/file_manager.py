@@ -7,8 +7,11 @@ MAX_DELETE_LIMIT = 10
 
 TRASH_DIR = os.path.join(BASE_DIR, "trash")
 
-os.makedirs(BASE_DIR, exist_ok=True)
-os.makedirs(TRASH_DIR, exist_ok=True)
+try:
+    os.makedirs(BASE_DIR, exist_ok=True)
+    os.makedirs(TRASH_DIR, exist_ok=True)
+except Exception:
+    pass
 
 def create_file(name: str, content: str) -> str:
     path = get_safe_path(name)

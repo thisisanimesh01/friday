@@ -7,10 +7,8 @@ prior to or without running arbitrary LLM shell commands.
 from __future__ import annotations
 
 import re
-from typing import Any
 
 from macos.registry import ActionResult, default_registry
-
 
 ROUTING_PATTERNS = [
     # Battery checks
@@ -48,6 +46,125 @@ ROUTING_PATTERNS = [
         re.compile(r"(?i)\b(?:disk\s+space|storage\s+space|free\s+disk|storage\s+status|how\s+much\s+storage)\b"),
         "get_storage",
         lambda m, text: {},
+    ),
+    # ── Milestone 6.2 Application Patterns (English, Hindi, Hinglish) ─────────
+    # Active application query
+    (
+        re.compile(r"(?i)\b(?:active\s+app|frontmost\s+app|which\s+app\s+is\s+active|current\s+app|kaunsa\s+app\s+chal\s+raha\s+hai)\b"),
+        "get_active_app",
+        lambda m, text: {},
+    ),
+    # Launch application (e.g., "open calculator", "launch terminal", "calculator kholo", "start brave")
+    (
+        re.compile(r"(?i)\b(?:open|launch|start|chalu\s+karo|kholo)\s+([a-zA-Z0-9_\s]+?)(?:\s+app|\s+application|\s+kholo|\s+chalu\s+karo)?$"),
+        "launch_app",
+        lambda m, text: {"app_name": m.group(1).strip()},
+    ),
+    (
+        re.compile(r"(?i)\b([a-zA-Z0-9_]+)\s+(?:kholo|chalu\s+karo|open\s+karo)\b"),
+        "launch_app",
+        lambda m, text: {"app_name": m.group(1).strip()},
+    ),
+    # Quit application (e.g., "quit calculator", "close safari", "terminal band karo", "force quit chrome")
+    (
+        re.compile(r"(?i)\b(?:force\s+quit|kill)\s+([a-zA-Z0-9_\s]+?)(?:\s+app|\s+application)?$"),
+        "quit_app",
+        lambda m, text: {"app_name": m.group(1).strip(), "force": True},
+    ),
+    (
+        re.compile(r"(?i)\b(?:quit|close|exit|band\s+karo)\s+([a-zA-Z0-9_\s]+?)(?:\s+app|\s+application|\s+band\s+karo)?$"),
+        "quit_app",
+        lambda m, text: {"app_name": m.group(1).strip(), "force": False},
+    ),
+    (
+        re.compile(r"(?i)\b([a-zA-Z0-9_]+)\s+(?:band\s+karo|close\s+karo)\b"),
+        "quit_app",
+        lambda m, text: {"app_name": m.group(1).strip(), "force": False},
+    ),
+    # Switch application (e.g., "switch to terminal", "focus notes", "terminal pe switch karo")
+    (
+        re.compile(r"(?i)\b(?:switch\s+to|focus|bring\s+up)\s+([a-zA-Z0-9_\s]+?)(?:\s+app|\s+application)?$"),
+        "switch_app",
+        lambda m, text: {"app_name": m.group(1).strip()},
+    ),
+    (
+        re.compile(r"(?i)\b([a-zA-Z0-9_]+)\s+pe\s+switch\s+karo\b"),
+        "switch_app",
+        lambda m, text: {"app_name": m.group(1).strip()},
+    ),
+    # Hide application (e.g., "hide calculator", "hide window", "chupao")
+    (
+        re.compile(r"(?i)\b(?:hide)\s+([a-zA-Z0-9_\s]+?)(?:\s+app|\s+application)?$"),
+        "hide_app",
+        lambda m, text: {"app_name": m.group(1).strip()},
+    ),
+    (
+        re.compile(r"(?i)\b(?:hide\s+this|hide\s+window|chupao)\b"),
+        "hide_app",
+        lambda m, text: {},
+    ),
+    # ── Milestone 6.2 Window Patterns ─────────────────────────────────────────
+    # Minimize window (e.g., "minimize window", "window minimize karo", "minimize calculator")
+    (
+        re.compile(r"(?i)\b(?:minimize\s+window|minimize)\b(?:\s+([a-zA-Z0-9_\s]+))?"),
+        "minimize_window",
+        lambda m, text: {"app_name": m.group(1).strip()} if m.group(1) else {},
+    ),
+    (
+        re.compile(r"(?i)\b(?:window\s+chhoti\s+karo|minimize\s+karo)\b"),
+        "minimize_window",
+        lambda m, text: {},
+    ),
+    # Restore window (e.g., "restore window", "unminimize", "window wapas lao")
+    (
+        re.compile(r"(?i)\b(?:restore\s+window|restore|unminimize)\b(?:\s+([a-zA-Z0-9_\s]+))?"),
+        "restore_window",
+        lambda m, text: {"app_name": m.group(1).strip()} if m.group(1) else {},
+    ),
+    (
+        re.compile(r"(?i)\b(?:window\s+wapas\s+lao|restore\s+karo)\b"),
+        "restore_window",
+        lambda m, text: {},
+    ),
+    # Fullscreen window (e.g., "full screen", "fullscreen karo", "toggle fullscreen")
+    (
+        re.compile(r"(?i)\b(?:fullscreen|full\s+screen|toggle\s+fullscreen|badi\s+screen)\b"),
+        "fullscreen_window",
+        lambda m, text: {},
+    ),
+    # Position window (e.g., "snap left", "left half karo", "maximize window", "center window")
+    (
+        re.compile(r"(?i)\b(?:snap\s+left|left\s+half|left\s+side|left\s+karo)\b"),
+        "position_window",
+        lambda m, text: {"position": "left_half"},
+    ),
+    (
+        re.compile(r"(?i)\b(?:snap\s+right|right\s+half|right\s+side|right\s+karo)\b"),
+        "position_window",
+        lambda m, text: {"position": "right_half"},
+    ),
+    (
+        re.compile(r"(?i)\b(?:maximize\s+window|maximize|pura\s+bada\s+karo|maximize\s+karo)\b"),
+        "position_window",
+        lambda m, text: {"position": "maximize"},
+    ),
+    (
+        re.compile(r"(?i)\b(?:center\s+window|center\s+karo)\b"),
+        "position_window",
+        lambda m, text: {"position": "center"},
+    ),
+    # ── Milestone 6.2 Media Capture Patterns ──────────────────────────────────
+    # Camera capture (e.g., "take a photo", "capture photo", "camera se photo lo", "photo khicho")
+    (
+        re.compile(r"(?i)\b(?:take\s+(?:a\s+)?photo|capture\s+photo|camera\s+capture|photo\s+khicho|tasveer\s+lo)\b"),
+        "capture_photo",
+        lambda m, text: {},
+    ),
+    # Screenshot capture (e.g., "take a screenshot", "screenshot lo", "capture screen")
+    (
+        re.compile(r"(?i)\b(?:take\s+(?:a\s+)?screenshot|capture\s+screen|screenshot\s+lo|screen\s+capture)\b"),
+        "capture_screenshot",
+        lambda m, text: {"mode": "fullscreen"},
     ),
 ]
 
@@ -120,5 +237,51 @@ def format_action_result(action_result: ActionResult) -> str:
         total = data.get("total_gb")
         pct = data.get("used_percent")
         return f"Disk storage: {free} GB free of {total} GB ({pct}% used)."
+
+    if act == "launch_app" and isinstance(data, dict):
+        if "error" in data:
+            return f"Failed to launch: {data['error']}"
+        return f"Application '{data.get('application')}' launched successfully."
+
+    if act == "quit_app" and isinstance(data, dict):
+        if "error" in data:
+            return f"Failed to quit: {data['error']}"
+        status = "Force-quit" if data.get("status") == "force_quit" else "Closed"
+        return f"{status} application '{data.get('application')}'."
+
+    if act == "switch_app" and isinstance(data, dict):
+        if "error" in data:
+            return f"Failed to switch: {data['error']}"
+        return f"Switched to '{data.get('application')}'."
+
+    if act == "hide_app" and isinstance(data, dict):
+        if "error" in data:
+            return f"Failed to hide: {data['error']}"
+        return f"Application '{data.get('application')}' hidden."
+
+    if act == "get_active_app" and isinstance(data, dict):
+        if "error" in data:
+            return f"Active application check: {data['error']}"
+        return f"Active application is '{data.get('active_application')}'."
+
+    if act in ("minimize_window", "restore_window", "fullscreen_window") and isinstance(data, dict):
+        if "error" in data:
+            return f"Window action error: {data['error']}"
+        return f"Window operation '{data.get('status')}' applied to {data.get('target', 'active app')}."
+
+    if act == "position_window" and isinstance(data, dict):
+        if "error" in data:
+            return f"Window position error: {data['error']}"
+        return f"Window positioned to '{data.get('position')}'."
+
+    if act == "capture_photo" and isinstance(data, dict):
+        if "error" in data:
+            return f"Camera capture error: {data['error']}"
+        return f"Photo captured successfully: {data.get('file_path')} (Saved in friday workspace/camera/)."
+
+    if act == "capture_screenshot" and isinstance(data, dict):
+        if "error" in data:
+            return f"Screenshot error: {data['error']}"
+        return f"Screenshot captured successfully: {data.get('file_path')} (Saved in friday workspace/screenshots/)."
 
     return str(data)
