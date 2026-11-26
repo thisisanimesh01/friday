@@ -175,6 +175,44 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Simulate execution without modifying macOS system state or files.",
     )
+    # Milestone 6.2 Application, Window, and Media capture flags
+    parser.add_argument(
+        "--launch-app",
+        type=str,
+        default=None,
+        help="Launch an installed macOS application by name.",
+    )
+    parser.add_argument(
+        "--quit-app",
+        type=str,
+        default=None,
+        help="Quit a running macOS application (force-quit requires --yes).",
+    )
+    parser.add_argument(
+        "--window-action",
+        choices=["minimize", "restore", "fullscreen", "left", "right", "center", "maximize"],
+        default=None,
+        help="Execute a window management action on the frontmost or active application.",
+    )
+    parser.add_argument(
+        "--take-photo",
+        action="store_true",
+        help="Capture on-demand camera photo saved strictly to friday workspace/camera/.",
+    )
+    parser.add_argument(
+        "--take-screenshot",
+        choices=["fullscreen", "window", "region"],
+        nargs="?",
+        const="fullscreen",
+        default=None,
+        help="Capture on-demand screenshot saved strictly to friday workspace/screenshots/.",
+    )
+    parser.add_argument(
+        "--target-app",
+        type=str,
+        default=None,
+        help="Target application name for window actions or app operations.",
+    )
     parser.add_argument(
         "--voice",
         type=str,
@@ -296,9 +334,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     if args.benchmark_tts:
-        from friday.audio.voice_manager import VoiceManager
         import time
+
         import psutil
+
+        from friday.audio.voice_manager import VoiceManager
 
         manager = VoiceManager()
         print("Running FRIDAY Neural Voice Benchmark...")
@@ -452,6 +492,93 @@ def main(argv: Sequence[str] | None = None) -> int:
             name=args.mac_action,
             dry_run=args.dry_run,
             confirmed=args.yes,
+        )
+        print(format_action_result(res))
+        return 0 if res.success or res.requires_confirmation else 1
+
+    # Milestone 6.2 CLI handlers
+    if args.launch_app:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        res = default_registry.execute(
+            name="launch_app",
+            dry_run=args.dry_run,
+            confirmed=args.yes,
+            app_name=args.launch_app,
+        )
+        print(format_action_result(res))
+        return 0 if res.success or res.requires_confirmation else 1
+
+    if args.quit_app:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        force = args.yes
+        res = default_registry.execute(
+            name="quit_app",
+            dry_run=args.dry_run,
+            confirmed=args.yes,
+            app_name=args.quit_app,
+            force=force,
+        )
+        print(format_action_result(res))
+        return 0 if res.success or res.requires_confirmation else 1
+
+    if args.window_action:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        action_name = "position_window"
+        kwargs = {}
+        if args.window_action == "minimize":
+            action_name = "minimize_window"
+            if args.target_app:
+                kwargs["app_name"] = args.target_app
+        elif args.window_action == "restore":
+            action_name = "restore_window"
+            if args.target_app:
+                kwargs["app_name"] = args.target_app
+        elif args.window_action == "fullscreen":
+            action_name = "fullscreen_window"
+            if args.target_app:
+                kwargs["app_name"] = args.target_app
+        else:
+            action_name = "position_window"
+            kwargs["position"] = args.window_action
+            if args.target_app:
+                kwargs["app_name"] = args.target_app
+
+        res = default_registry.execute(
+            name=action_name,
+            dry_run=args.dry_run,
+            confirmed=args.yes,
+            **kwargs,
+        )
+        print(format_action_result(res))
+        return 0 if res.success or res.requires_confirmation else 1
+
+    if args.take_photo:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        res = default_registry.execute(
+            name="capture_photo",
+            dry_run=args.dry_run,
+            confirmed=args.yes,
+        )
+        print(format_action_result(res))
+        return 0 if res.success or res.requires_confirmation else 1
+
+    if args.take_screenshot:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        res = default_registry.execute(
+            name="capture_screenshot",
+            dry_run=args.dry_run,
+            confirmed=args.yes,
+            mode=args.take_screenshot,
         )
         print(format_action_result(res))
         return 0 if res.success or res.requires_confirmation else 1

@@ -16,7 +16,7 @@ import os
 import re
 import subprocess
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
@@ -342,6 +342,141 @@ def create_default_registry() -> ActionRegistry:
             description="Get macOS root disk total, used, and free space.",
             risk=RiskTier.READ_ONLY,
             handler=get_system_storage,
+        )
+    )
+
+    # ── Milestone 6.2 Actions ─────────────────────────────────────────────────
+    from macos.apps_windows import (
+        get_active_application,
+        hide_application,
+        launch_application,
+        minimize_window,
+        position_window,
+        quit_application,
+        restore_window,
+        switch_application,
+        toggle_fullscreen_window,
+    )
+    from macos.media_capture import capture_camera_photo, capture_screenshot
+
+    # 7. Launch application
+    reg.register(
+        ActionDefinition(
+            name="launch_app",
+            description="Launch an installed macOS application.",
+            risk=RiskTier.MEDIUM,
+            handler=launch_application,
+            arg_schema={"app_name": str},
+        )
+    )
+
+    # 8. Quit application (graceful or forced)
+    reg.register(
+        ActionDefinition(
+            name="quit_app",
+            description="Quit a running macOS application (force-quit requires confirmation).",
+            risk=RiskTier.HIGH,
+            handler=quit_application,
+            arg_schema={"app_name": str, "force": bool},
+            requires_confirmation=False,  # Checked dynamically for force=True
+        )
+    )
+
+    # 9. Switch application
+    reg.register(
+        ActionDefinition(
+            name="switch_app",
+            description="Switch to and activate a target macOS application.",
+            risk=RiskTier.LOW,
+            handler=switch_application,
+            arg_schema={"app_name": str},
+        )
+    )
+
+    # 10. Hide application
+    reg.register(
+        ActionDefinition(
+            name="hide_app",
+            description="Hide an application or the active frontmost application.",
+            risk=RiskTier.LOW,
+            handler=hide_application,
+            arg_schema={"app_name": str},
+        )
+    )
+
+    # 11. Get active application
+    reg.register(
+        ActionDefinition(
+            name="get_active_app",
+            description="Get the frontmost active application name on macOS.",
+            risk=RiskTier.READ_ONLY,
+            handler=get_active_application,
+        )
+    )
+
+    # 12. Minimize window
+    reg.register(
+        ActionDefinition(
+            name="minimize_window",
+            description="Minimize the front window of an application or the active window.",
+            risk=RiskTier.LOW,
+            handler=minimize_window,
+            arg_schema={"app_name": str},
+        )
+    )
+
+    # 13. Restore window
+    reg.register(
+        ActionDefinition(
+            name="restore_window",
+            description="Restore/unminimize the window of an application.",
+            risk=RiskTier.LOW,
+            handler=restore_window,
+            arg_schema={"app_name": str},
+        )
+    )
+
+    # 14. Fullscreen window
+    reg.register(
+        ActionDefinition(
+            name="fullscreen_window",
+            description="Toggle full-screen mode on the frontmost window.",
+            risk=RiskTier.LOW,
+            handler=toggle_fullscreen_window,
+            arg_schema={"app_name": str},
+        )
+    )
+
+    # 15. Position window (left, right, center, maximize)
+    reg.register(
+        ActionDefinition(
+            name="position_window",
+            description="Position and snap window (left_half, right_half, center, maximize).",
+            risk=RiskTier.LOW,
+            handler=position_window,
+            arg_schema={"position": str, "app_name": str},
+        )
+    )
+
+    # 16. Capture camera photo (explicit on-demand, saved strictly to friday workspace/camera/)
+    reg.register(
+        ActionDefinition(
+            name="capture_photo",
+            description="Capture single on-demand camera photo to friday workspace/camera/.",
+            risk=RiskTier.MEDIUM,
+            handler=capture_camera_photo,
+            arg_schema={"filename": str},
+        )
+    )
+
+    # 17. Capture screenshot (explicit on-demand, saved strictly to friday workspace/screenshots/)
+    reg.register(
+        ActionDefinition(
+            name="capture_screenshot",
+            description="Capture single screenshot to friday workspace/screenshots/.",
+            risk=RiskTier.MEDIUM,
+            handler=capture_screenshot,
+            arg_schema={"mode": str, "filename": str, "target_window": str},
         )
     )
 

@@ -1,20 +1,30 @@
 import os
 
-BASE_DIR = os.path.expanduser("~/Desktop/friday_workspace")  # user's workspace directory
+from security.privacy_guard import (
+    WORKSPACE_ROOT,
+    is_path_permanently_protected,
+    validate_workspace_path,
+)
+
+BASE_DIR = str(WORKSPACE_ROOT)
 
 def get_safe_path(filename: str) -> str:
-    # Remove any path traversal attempts
-    filename = os.path.basename(filename)
+    # 1. Deny-by-default check for permanently protected folders
+    if is_path_permanently_protected(filename):
+        raise PermissionError("Access denied: protected privacy location")
 
-    full_path = os.path.join(BASE_DIR, filename)
-    real_path = os.path.realpath(full_path)
+    # If BASE_DIR is customized (e.g. in test fixture with monkeypatch), use custom base
+    if BASE_DIR != str(WORKSPACE_ROOT):
+        clean_name = os.path.basename(filename)
+        candidate = os.path.realpath(os.path.join(BASE_DIR, clean_name))
+        if not candidate.startswith(os.path.realpath(BASE_DIR)):
+            raise PermissionError("Access denied: outside workspace")
+        if os.path.islink(candidate):
+            raise PermissionError("Access denied: symlink detected")
+        if is_path_permanently_protected(candidate):
+            raise PermissionError("Access denied: protected privacy location")
+        return candidate
 
-    # Ensure path stays inside workspace
-    if not real_path.startswith(BASE_DIR):
-        raise PermissionError("Access denied: outside workspace")
-
-    # Block symbolic links
-    if os.path.islink(real_path):
-        raise PermissionError("Access denied: symlink detected")
-
-    return real_path
+    # 2. Standard workspace confinement & traversal check
+    safe_path = validate_workspace_path(filename)
+    return str(safe_path)

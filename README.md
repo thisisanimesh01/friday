@@ -125,7 +125,7 @@ ruff check tests/
 python3 -m compileall -q .
 ```
 
-* **Security:** Never commit `.env`, `memory.db`, or `friday.log`. File operations are restricted to `~/Desktop/friday_workspace` via `security/path_validator.py`.
+* **Security:** Never commit `.env`, `memory.db`, or `friday.log`. File operations and media are strictly confined to `~/Desktop/friday workspace/` via `security/privacy_guard.py`. The folder `~/Desktop/me and she/` and macOS personal data repositories are permanently blocked under deny-by-default rules.
 
 ---
 
@@ -137,9 +137,9 @@ python3 -m compileall -q .
 * **Phase 4 — Hinata Voice & Speech Output:** Completed (Local TTS, voice model feasibility, voice profile tuning, streaming speech, hands-free conversation).
 * **Phase 5 — Personality & Advanced Memory:** Completed (Personality consistency, terminal-only architecture, Hinata neural voice at 1.14x, contextual memory, intelligent personalization, memory privacy & management).
 * **Phase 6 — macOS Control & Automation:**
-  - **Milestone 6.1:** macOS Control Foundation & Permission Framework — **Current**.
-  - **Milestone 6.2:** Application Management & Window Control — **Next**.
-  - **Milestone 6.3:** AppleScript & Shortcuts Automation.
+  - **Milestone 6.1:** macOS Control Foundation & Permission Framework — **Completed**.
+  - **Milestone 6.2:** Application Management, Window Control & Privacy Protection — **Completed**.
+  - **Milestone 6.3:** AppleScript & Shortcuts Automation — **Next**.
   - **Milestone 6.4:** System Settings & Audio/Display Controls.
   - **Milestone 6.5:** Multi-Step Desktop Workflows.
 * **Phase 7 — Vision & Screen Awareness:** Permission-controlled screenshots, local OCR, document understanding, window awareness.
