@@ -2,7 +2,15 @@
 
 All notable changes to **Friday** are documented in this file.
 
-## [Unreleased] - Phase 5, Milestone 5.4: Memory Privacy & Management
+## [Unreleased] - Phase 6, Milestone 6.1: macOS Control Foundation & Permission Framework
+- **Modular Action Registry:** Implemented typed action registry (`src/friday/macos/registry.py`) with risk classification tiers (`READ_ONLY`, `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`), strict argument schemas, and execution timeout protection.
+- **Deterministic Intent Routing:** Added macOS natural-language intent router (`src/friday/macos/router.py`) mapping queries directly to allowlisted system actions without executing unrestricted LLM shell commands.
+- **Harmless Read-Only Actions:** Added built-in allowlisted handlers for `get_battery`, `get_volume`, `set_volume`, `list_apps`, `get_appearance` (Dark/Light mode), and `get_storage`.
+- **Privacy-Safe Audit Logging:** Structured audit log (`~/Library/Application Support/Friday/logs/macos_actions.jsonl`) recording action type, risk, duration, and parameter sanitization (redacting passwords, keys, and tokens).
+- **CLI & Dry-Run Controls:** Added `--list-actions`, `--mac-action <name>`, and `--dry-run` to inspect and safely simulate system actions.
+- **Preserved Approved Voice:** Maintained approved Hinata neural voice model and 1.14x speaking speed.
+
+## [Phase 5, Milestone 5.4] - Memory Privacy & Management
 - **Privacy & Memory Toggles:** Added `is_memory_enabled()`, `set_memory_enabled()`, `is_private_session()`, and `set_private_session()` providing instant incognito execution without touching persistent disk storage.
 - **Natural-Language Remember & Forget Commands:** Supported conversational memory directives (e.g. `remember that I prefer Vim`, `forget my editor preference`, `forget about project FRIDAY`, `forget everything you know about me`).
 - **Prompt Injection Defense:** Added `sanitize_memory_text()` to strip injected `<system>` tags, instruction overrides, and role-spoofing prefixes before injecting memories into LLM prompts.

@@ -135,13 +135,13 @@ python3 -m compileall -q .
 * **Phase 2 — Hybrid AI Intelligence:** Completed (Local Ollama integration, hybrid router, streaming responses, offline privacy).
 * **Phase 3 — Hearing & Voice Input:** Completed (Microphone capture, local Whisper STT, Hey Friday wake word, continuous listening).
 * **Phase 4 — Hinata Voice & Speech Output:** Completed (Local TTS, voice model feasibility, voice profile tuning, streaming speech, hands-free conversation).
-* **Phase 5 — Personality & Advanced Memory:**
-  - **Milestone 5.1:** Consistent Friday Personality & Terminal-Only Architecture — Completed.
-  - **Milestone 5.1.1:** Hinata Neural Voice Integration (Kokoro-82M ONNX @ 1.14x speed) — Completed.
-  - **Milestone 5.2:** Contextual Memory Improvements — Completed.
-  - **Milestone 5.3:** Intelligent Memory & Personalization — Completed.
-  - **Milestone 5.4:** Memory Privacy & Management — **Current**.
-* **Phase 6 — macOS Control & Automation:** Application management, AppleScript/Shortcuts, system controls, confirmation framework.
+* **Phase 5 — Personality & Advanced Memory:** Completed (Personality consistency, terminal-only architecture, Hinata neural voice at 1.14x, contextual memory, intelligent personalization, memory privacy & management).
+* **Phase 6 — macOS Control & Automation:**
+  - **Milestone 6.1:** macOS Control Foundation & Permission Framework — **Current**.
+  - **Milestone 6.2:** Application Management & Window Control — **Next**.
+  - **Milestone 6.3:** AppleScript & Shortcuts Automation.
+  - **Milestone 6.4:** System Settings & Audio/Display Controls.
+  - **Milestone 6.5:** Multi-Step Desktop Workflows.
 * **Phase 7 — Vision & Screen Awareness:** Permission-controlled screenshots, local OCR, document understanding, window awareness.
 * **Phase 8 — Online Intelligence & Plugins:** Internet tool improvements, web research, browser automation, productivity plugins.
 * **Phase 9 — Personal Developer Assistant:** Project workspace awareness, code analysis & debugging, Git/GitHub assistance, safe terminal execution.

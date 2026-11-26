@@ -20,6 +20,7 @@ from memory.memory_manager import (
 )
 from personality import build_personality_system_prompt
 from plugin_loader import handle_plugin, load_plugins
+from macos.router import format_action_result, route_macos_intent
 
 
 load_plugins()
@@ -100,6 +101,13 @@ def handle_input(user_input):
     if plugin_response:
         store_memory(user_input, plugin_response)
         return plugin_response
+
+    # Allowlisted macOS system control routing
+    matched_mac, mac_result = route_macos_intent(user_input)
+    if matched_mac and mac_result is not None:
+        mac_resp = format_action_result(mac_result)
+        store_memory(user_input, mac_resp)
+        return mac_resp
 
     intent = detect_intent(user_input)
 
