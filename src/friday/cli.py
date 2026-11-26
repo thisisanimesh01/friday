@@ -101,7 +101,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--list-memory",
         action="store_true",
-        help="List stored persistent conversation memories.",
+        help="List stored persistent conversation memories and recognized preferences.",
+    )
+    parser.add_argument(
+        "--list-preferences",
+        action="store_true",
+        help="List all recognized user preferences (programming languages, tools, name, etc.).",
     )
     parser.add_argument(
         "--search-memory",
@@ -284,16 +289,35 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     if args.list_memory:
-        from friday.memory.local import get_all
+        from friday.memory.local import get_all, get_all_preferences
+
+        prefs = get_all_preferences()
+        if prefs:
+            print("Learned User Preferences:")
+            for k, v in prefs.items():
+                print(f"  • {k.capitalize()}: {v}")
+            print()
 
         memories = get_all()
-        if not memories:
-            print("No persistent memories stored yet.")
+        if not memories and not prefs:
+            print("No persistent memories or preferences stored yet.")
             return 0
         print(f"Stored Memories ({len(memories)} total entries):")
         for m in memories[-20:]:
             print(f"  [{m[0]}] User: {m[1]}")
             print(f"       Friday: {str(m[2])[:80]}...")
+        return 0
+
+    if args.list_preferences:
+        from friday.memory.local import get_all_preferences
+
+        prefs = get_all_preferences()
+        if not prefs:
+            print("No user preferences recognized yet.")
+            return 0
+        print("Recognized User Preferences & Profile:")
+        for k, v in prefs.items():
+            print(f"  • {k.capitalize()}: {v}")
         return 0
 
     if args.search_memory:

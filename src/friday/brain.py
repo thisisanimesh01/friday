@@ -7,7 +7,15 @@ from groq import Groq
 from commands import execute_command
 from intent_parser import detect_intent, extract_filename
 from memory.local import get_all
-from memory.memory_manager import load_personality, retrieve_memory, save_personality, search_memory, store_memory, update_context
+from memory.memory_manager import (
+    get_user_preferences,
+    load_personality,
+    retrieve_memory,
+    save_personality,
+    search_memory,
+    store_memory,
+    update_context,
+)
 from personality import build_personality_system_prompt
 from plugin_loader import handle_plugin, load_plugins
 
@@ -38,7 +46,10 @@ def handle_input(user_input):
 
     cleaned = user_input.lower().strip()
 
-    if "name" in cleaned:
+    if cleaned in ["what is my name", "who am i", "do you know my name"]:
+        prefs = get_user_preferences()
+        if "name" in prefs:
+            return f"Your name is {prefs['name']}."
         rows = get_all()
         names = []
 
@@ -48,11 +59,11 @@ def handle_input(user_input):
 
             for w in words_local:
                 clean = w.replace("-", "").replace("_", "")
-                if clean.isalpha() and len(clean) > 2:
+                if clean.isalpha() and len(clean) > 2 and clean.lower() not in {"and", "are", "building", "favorite", "friday", "language", "local", "name", "offline", "primary", "programming", "project", "software", "with"}:
                     names.append(w.capitalize())
 
         if names:
-            return "I remember: " + ", ".join(sorted(set(names)))
+            return f"Your name is {names[0]}."
 
     if cleaned in ["friday", "hey friday", "hi friday"]:
         response = "I'm here. How can I help you today?"
@@ -98,7 +109,14 @@ def handle_input(user_input):
         return command_response
 
     # Context integration:
-    # 1. Check for relevant semantic memories from persistent storage
+    # 1. Check for relevant user preferences from persistent storage
+    user_prefs = get_user_preferences()
+    pref_context = ""
+    if user_prefs:
+        pref_lines = [f"- {k}: {v}" for k, v in user_prefs.items()]
+        pref_context = "\n[User Preferences & Profile]:\n" + "\n".join(pref_lines)
+
+    # 2. Check for relevant semantic memories from persistent storage
     relevant_memories = retrieve_memory(user_input, limit=3, min_similarity=0.35)
     context_hint = ""
     if relevant_memories:
@@ -106,7 +124,7 @@ def handle_input(user_input):
             f"- When you asked '{m[1]}', Friday answered: '{m[2]}'" for m in relevant_memories
         )
 
-    # 2. Extract recent conversation turns from session personality
+    # 3. Extract recent conversation turns from session personality
     p_data = load_personality()
     full_history = p_data.get("full_history", [])
     recent_history = full_history[-4:] if full_history else []
@@ -116,7 +134,9 @@ def handle_input(user_input):
             f"User: {p['user']}\nFriday: {p['bot']}" for p in recent_history
         )
 
-    enhanced_prompt = f"{recent_context}\n{context_hint}\n\nUser: {user_input}\nFriday:".strip()
+    enhanced_prompt = (
+        f"{pref_context}\n{recent_context}\n{context_hint}\n\nUser: {user_input}\nFriday:".strip()
+    )
 
     response = ask_friday(enhanced_prompt)
 

@@ -138,9 +138,9 @@ python3 -m compileall -q .
 * **Phase 5 — Personality & Advanced Memory:**
   - **Milestone 5.1:** Consistent Friday Personality & Terminal-Only Architecture — Completed.
   - **Milestone 5.1.1:** Hinata Neural Voice Integration (Kokoro-82M ONNX @ 1.14x speed) — Completed.
-  - **Milestone 5.2:** Contextual Memory Improvements — **Current**.
-  - **Milestone 5.3:** Personal Preferences & Recall — **Next**.
-  - **Milestone 5.4:** Memory Privacy & Management.
+  - **Milestone 5.2:** Contextual Memory Improvements — Completed.
+  - **Milestone 5.3:** Intelligent Memory & Personalization — **Current**.
+  - **Milestone 5.4:** Memory Privacy & Management — **Next**.
 * **Phase 6 — macOS Control & Automation:** Application management, AppleScript/Shortcuts, system controls, confirmation framework.
 * **Phase 7 — Vision & Screen Awareness:** Permission-controlled screenshots, local OCR, document understanding, window awareness.
 * **Phase 8 — Online Intelligence & Plugins:** Internet tool improvements, web research, browser automation, productivity plugins.

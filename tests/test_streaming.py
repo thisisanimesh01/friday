@@ -13,6 +13,7 @@ if "memory" not in sys.modules:
     _mm.store_memory = MagicMock()
     _mm.retrieve_memory = MagicMock(return_value=[])
     _mm.search_memory = MagicMock(return_value=[])
+    _mm.get_user_preferences = MagicMock(return_value={})
     _mem.memory_manager = _mm
     sys.modules["memory"] = _mem
     sys.modules["memory.memory_manager"] = _mm
@@ -24,6 +25,7 @@ else:
     _mm.store_memory = MagicMock()
     _mm.retrieve_memory = MagicMock(return_value=[])
     _mm.search_memory = MagicMock(return_value=[])
+    _mm.get_user_preferences = MagicMock(return_value={})
     sys.modules["memory"].memory_manager = _mm
     sys.modules["memory.memory_manager"] = _mm
 
