@@ -115,7 +115,7 @@ class VoiceManager:
         target_speed = speed
         if target_speed is None:
             if rate:
-                # 190 wpm corresponds to 1.09 (+15% speed)
+                # 200 wpm corresponds to 1.14 (+20% speed)
                 target_speed = round(rate / 175.0, 2)
             else:
                 target_speed = self.neural.speed
