@@ -72,12 +72,12 @@ class NeuralTTSEngine:
         self.hinata_vector_path = self.model_dir / self.HINATA_VECTOR_FILENAME
         self.reference_wav_path = self.model_dir / self.REFERENCE_WAV_FILENAME
 
-        # Configurable speed: priority given to passed param -> env var TTS_SPEED -> 1.09 (+15% of baseline 0.95)
+        # Configurable speed: priority given to passed param -> env var TTS_SPEED -> 1.14 (+20% of baseline 0.95, user approved)
         if speed is not None:
             self.speed = float(speed)
         else:
             env_speed = os.getenv("TTS_SPEED")
-            self.speed = float(env_speed) if env_speed else 1.09
+            self.speed = float(env_speed) if env_speed else 1.14
         self.lang = lang
         self.sample_rate = 24000
 

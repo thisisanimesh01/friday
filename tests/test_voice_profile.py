@@ -6,7 +6,7 @@ def test_voice_registry_defaults():
     hinata = registry.get_profile("hinata")
 
     assert hinata.profile_id == "hinata"
-    assert hinata.speech_rate == 190
+    assert hinata.speech_rate == 200
     assert hinata.target_style == "gentle"
     assert hinata.engine == "neural"
     assert "hinata" in hinata.primary_voice
