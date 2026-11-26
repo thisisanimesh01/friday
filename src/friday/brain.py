@@ -7,7 +7,9 @@ from groq import Groq
 from commands import execute_command
 from intent_parser import detect_intent, extract_filename
 from memory.local import get_all
+from memory.intelligence import parse_memory_command, sanitize_memory_text
 from memory.memory_manager import (
+    forget_memory,
     get_user_preferences,
     load_personality,
     retrieve_memory,
@@ -43,6 +45,17 @@ client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
 def handle_input(user_input):
     context = update_context(user_input)
+
+    # 0. Check for natural-language memory privacy / forget commands
+    cmd_type, target = parse_memory_command(user_input)
+    if cmd_type and cmd_type.startswith("forget"):
+        _success, msg = forget_memory(cmd_type, target)
+        return msg
+
+    if cmd_type == "remember" and target:
+        resp = f"I will remember that {target}."
+        store_memory(target, resp)
+        return resp
 
     cleaned = user_input.lower().strip()
 
@@ -113,7 +126,7 @@ def handle_input(user_input):
     user_prefs = get_user_preferences()
     pref_context = ""
     if user_prefs:
-        pref_lines = [f"- {k}: {v}" for k, v in user_prefs.items()]
+        pref_lines = [f"- {sanitize_memory_text(k)}: {sanitize_memory_text(v)}" for k, v in user_prefs.items()]
         pref_context = "\n[User Preferences & Profile]:\n" + "\n".join(pref_lines)
 
     # 2. Check for relevant semantic memories from persistent storage
@@ -121,7 +134,8 @@ def handle_input(user_input):
     context_hint = ""
     if relevant_memories:
         context_hint = "\n[Relevant Past Context]:\n" + "\n".join(
-            f"- When you asked '{m[1]}', Friday answered: '{m[2]}'" for m in relevant_memories
+            f"- When you asked '{sanitize_memory_text(m[1])}', Friday answered: '{sanitize_memory_text(m[2])}'"
+            for m in relevant_memories
         )
 
     # 3. Extract recent conversation turns from session personality
@@ -131,7 +145,8 @@ def handle_input(user_input):
     recent_context = ""
     if recent_history:
         recent_context = "\n[Recent Conversation]:\n" + "\n".join(
-            f"User: {p['user']}\nFriday: {p['bot']}" for p in recent_history
+            f"User: {sanitize_memory_text(p['user'])}\nFriday: {sanitize_memory_text(p['bot'])}"
+            for p in recent_history
         )
 
     enhanced_prompt = (

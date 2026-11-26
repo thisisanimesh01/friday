@@ -123,7 +123,41 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--clear-memory",
         action="store_true",
-        help="Clear all stored conversation memories (privacy control).",
+        help="Clear all stored conversation memories (privacy control; requires confirmation).",
+    )
+    parser.add_argument(
+        "--yes",
+        "-y",
+        action="store_true",
+        help="Confirm execution of destructive operations without manual prompt.",
+    )
+    parser.add_argument(
+        "--private",
+        action="store_true",
+        help="Run interactive session in private (incognito) mode with zero memory persistence.",
+    )
+    parser.add_argument(
+        "--no-memory",
+        action="store_true",
+        help="Disable memory persistence entirely for this execution.",
+    )
+    parser.add_argument(
+        "--export-memory",
+        type=str,
+        default=None,
+        help="Export all conversation memories and user preferences to a local JSON file.",
+    )
+    parser.add_argument(
+        "--import-memory",
+        type=str,
+        default=None,
+        help="Import and restore memories and user preferences from a local JSON file.",
+    )
+    parser.add_argument(
+        "--prune-memory",
+        type=int,
+        default=None,
+        help="Prune conversation memories older than specified number of days.",
     )
     parser.add_argument(
         "--voice",
@@ -344,11 +378,44 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"No memory entry found matching '{args.delete_memory}'.")
             return 1
 
+    if args.private:
+        from friday.memory.memory_manager import set_private_session
+        set_private_session(True)
+        print("Starting FRIDAY in Private (Incognito) Mode. No memories will be persisted.")
+
+    if args.no_memory:
+        from friday.memory.memory_manager import set_memory_enabled
+        set_memory_enabled(False)
+        print("Memory persistence disabled for this session.")
+
+    if args.export_memory:
+        from friday.memory.memory_manager import export_memory_json
+        success, msg = export_memory_json(args.export_memory)
+        print(msg)
+        return 0 if success else 1
+
+    if args.import_memory:
+        from friday.memory.memory_manager import import_memory_json
+        success, msg = import_memory_json(args.import_memory)
+        print(msg)
+        return 0 if success else 1
+
+    if args.prune_memory is not None:
+        from friday.memory.memory_manager import prune_retention_policy
+        count = prune_retention_policy(args.prune_memory)
+        print(f"Retention Policy: Pruned {count} memories older than {args.prune_memory} days.")
+        return 0
+
     if args.clear_memory:
+        if not args.yes:
+            print("Action required: Clearing all memory is a destructive operation.")
+            print("To execute, re-run with confirmation flag: --clear-memory --yes")
+            return 1
+
         from friday.memory.memory_manager import clear_memory
 
         deleted = clear_memory()
-        print(f"All stored memories cleared ({deleted} entries removed). Privacy status: CLEAN.")
+        print(f"All stored memories and preferences cleared ({deleted} entries removed). Privacy status: CLEAN.")
         return 0
 
     if args.validate_reference:

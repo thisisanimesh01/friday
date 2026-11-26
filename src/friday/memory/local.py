@@ -133,6 +133,24 @@ def delete_memory_by_text(query: str) -> int:
     return deleted_count
 
 
+def prune_memories_older_than(days: int) -> int:
+    """Delete conversation memories created older than N days."""
+    if days <= 0:
+        return 0
+    conn = sqlite3.connect(DB, check_same_thread=False)
+    c = conn.cursor()
+    # SQLite datetime modifier: '-N days'
+    modifier = f"-{int(days)} days"
+    c.execute(
+        "DELETE FROM conversations WHERE created_at < datetime('now', ?)",
+        (modifier,),
+    )
+    deleted_count = c.rowcount
+    conn.commit()
+    conn.close()
+    return deleted_count
+
+
 def clear_all_memory() -> int:
     """Clear all records from local memory database and preferences table."""
     conn = sqlite3.connect(DB, check_same_thread=False)

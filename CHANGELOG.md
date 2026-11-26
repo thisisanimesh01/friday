@@ -2,7 +2,17 @@
 
 All notable changes to **Friday** are documented in this file.
 
-## [Unreleased] - Phase 5, Milestone 5.3: Intelligent Memory & Personalization
+## [Unreleased] - Phase 5, Milestone 5.4: Memory Privacy & Management
+- **Privacy & Memory Toggles:** Added `is_memory_enabled()`, `set_memory_enabled()`, `is_private_session()`, and `set_private_session()` providing instant incognito execution without touching persistent disk storage.
+- **Natural-Language Remember & Forget Commands:** Supported conversational memory directives (e.g. `remember that I prefer Vim`, `forget my editor preference`, `forget about project FRIDAY`, `forget everything you know about me`).
+- **Prompt Injection Defense:** Added `sanitize_memory_text()` to strip injected `<system>` tags, instruction overrides, and role-spoofing prefixes before injecting memories into LLM prompts.
+- **Selective Deletion & Complete Invalidation:** Ensured deleted memories and forgotten preferences are purged from both SQLite and active in-memory session history and caches.
+- **Automated Retention Policies:** Implemented `prune_retention_policy(days)` and CLI `--prune-memory <days>` to clean records older than a configured time window.
+- **Export & Restore:** Added `--export-memory <file.json>` and `--import-memory <file.json>` for local encrypted/portable backups.
+- **Destructive Confirmation Guards:** Guarded `--clear-memory` to require `--yes` / `-y` before executing destructive operations.
+- **Preserved Approved Voice:** Hinata neural voice embedding (`hinata_voice.npy`) and 1.14x speed multiplier preserved permanently.
+
+## [Phase 5, Milestone 5.3] - Intelligent Memory & Personalization
 - **Intelligent Memory Selection:** Added filtering in `src/friday/memory/intelligence.py` to prevent saving sensitive information (passwords, API keys, tokens, credit cards) and transient/ephemeral noise (greetings, short acknowledgments, diagnostics).
 - **Preference Recognition & Upserting:** Extracted and categorized user preferences (name, primary programming language, project, database, editor, UI theme) into dedicated `user_preferences` SQLite table.
 - **Contradiction Resolution & Fact Updates:** Implemented fact correction detection (e.g. "Actually I switched to...") that updates preferences and purges contradictory or superseded past memories.
