@@ -160,6 +160,22 @@ def build_parser() -> argparse.ArgumentParser:
         help="Prune conversation memories older than specified number of days.",
     )
     parser.add_argument(
+        "--list-actions",
+        action="store_true",
+        help="List all registered allowlisted macOS system control actions and their risk tiers.",
+    )
+    parser.add_argument(
+        "--mac-action",
+        type=str,
+        default=None,
+        help="Execute a specific registered macOS system action by name.",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Simulate execution without modifying macOS system state or files.",
+    )
+    parser.add_argument(
         "--voice",
         type=str,
         default=None,
@@ -417,6 +433,28 @@ def main(argv: Sequence[str] | None = None) -> int:
         deleted = clear_memory()
         print(f"All stored memories and preferences cleared ({deleted} entries removed). Privacy status: CLEAN.")
         return 0
+
+    if args.list_actions:
+        from friday.macos.registry import default_registry
+
+        actions = default_registry.list_actions()
+        print(f"Registered Allowlisted macOS Actions ({len(actions)} total):")
+        for a in actions:
+            confirm = " [Requires Confirmation]" if a["requires_confirmation"] else ""
+            print(f"  • {a['name']:<16} [{a['risk']:<9}] - {a['description']}{confirm}")
+        return 0
+
+    if args.mac_action:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        res = default_registry.execute(
+            name=args.mac_action,
+            dry_run=args.dry_run,
+            confirmed=args.yes,
+        )
+        print(format_action_result(res))
+        return 0 if res.success or res.requires_confirmation else 1
 
     if args.validate_reference:
         from friday.audio.voice_reference import VoiceReferenceValidator
