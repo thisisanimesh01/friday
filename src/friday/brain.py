@@ -97,19 +97,26 @@ def handle_input(user_input):
         store_memory(user_input, command_response)
         return command_response
 
-    results = search_memory(user_input)
-
+    # Context integration:
+    # 1. Check for relevant semantic memories from persistent storage
+    relevant_memories = retrieve_memory(user_input, limit=3, min_similarity=0.35)
     context_hint = ""
-    if results:
-        context_hint = "\nRelevant memory:\n" + "\n".join(results)
+    if relevant_memories:
+        context_hint = "\n[Relevant Past Context]:\n" + "\n".join(
+            f"- When you asked '{m[1]}', Friday answered: '{m[2]}'" for m in relevant_memories
+        )
 
-    past = retrieve_memory(user_input)
+    # 2. Extract recent conversation turns from session personality
+    p_data = load_personality()
+    full_history = p_data.get("full_history", [])
+    recent_history = full_history[-4:] if full_history else []
+    recent_context = ""
+    if recent_history:
+        recent_context = "\n[Recent Conversation]:\n" + "\n".join(
+            f"User: {p['user']}\nFriday: {p['bot']}" for p in recent_history
+        )
 
-    context_text = ""
-    for p in past[-10:]:
-        context_text += f"User: {p[1]}\nFriday: {p[2]}\n"
-
-    enhanced_prompt = context_text + context_hint + f"\nUser: {user_input}\nFriday:"
+    enhanced_prompt = f"{recent_context}\n{context_hint}\n\nUser: {user_input}\nFriday:".strip()
 
     response = ask_friday(enhanced_prompt)
 

@@ -14,7 +14,7 @@ import numpy as np
 from pathlib import Path
 from dotenv import load_dotenv
 
-from memory.local import init_db, save_local, get_all
+from memory.local import clear_all_memory, delete_memory_by_id, delete_memory_by_text, get_all, init_db, save_local
 from memory.embedder import embed
 from memory.sync import is_online, sync
 from memory.supabase import save_cloud
@@ -32,16 +32,24 @@ init_db()
 # ── In-memory embedding cache ─────────────────────────────────────────────────
 memory_store = []
 
-rows = get_all()
-for row in rows:
-    try:
-        text = row[1]
-        emb = np.array(json.loads(row[3])) if row[3] else np.zeros(1)
-        memory_store.append((text, emb))
-    except Exception:
-        continue
+def reload_memory_store():
+    """Reload in-memory cache directly from SQLite."""
+    global memory_store
+    memory_store = []
+    rows = get_all()
+    for row in rows:
+        try:
+            row_id = row[0]
+            text = row[1]
+            emb = np.array(json.loads(row[3])) if row[3] else np.zeros(1)
+            memory_store.append((row_id, text, emb))
+        except Exception:
+            continue
+    logger.info(f"Reloaded {len(memory_store)} memory entries from DB.")
 
-logger.info(f"Loaded {len(memory_store)} memory entries from DB.")
+
+# ── Initial load ─────────────────────────────────────────────────────────────
+reload_memory_store()
 
 # ── Default personality ───────────────────────────────────────────────────────
 DEFAULT_PERSONALITY = {
@@ -98,25 +106,46 @@ def save_personality(data: dict):
 
 # ── Core memory operations ─────────────────────────────────────────────────────
 
-def store_memory(user: str, bot):
-    """Persist one conversation turn to SQLite + in-memory cache."""
-    if isinstance(bot, dict):
-        bot_text = bot.get("message", str(bot))
-    else:
-        bot_text = str(bot)
+def store_memory(user: str, bot, deduplicate: bool = True, sim_threshold: float = 0.95):
+    """Persist one conversation turn to SQLite + in-memory cache with deduplication.
 
-    embedding = embed(user)
+    Parameters:
+        user: User message string
+        bot: Bot response string or dict
+        deduplicate: If True, avoids saving duplicate or nearly identical queries (> sim_threshold)
+        sim_threshold: Cosine similarity cutoff for treating queries as duplicates
+    """
+    if not user or not user.strip():
+        return None
+
+    user_clean = user.strip()
+    if isinstance(bot, dict):
+        bot_text = bot.get("message", str(bot)).strip()
+    else:
+        bot_text = str(bot).strip()
+
+    embedding = embed(user_clean)
     try:
         emb_arr = np.array(embedding)
     except Exception:
         emb_arr = np.zeros(1)
 
-    memory_store.append((user, emb_arr))
-    save_local(user, bot_text, emb_arr.tolist())
+    # 1. Deduplication check: check if the exact same turn or near-identical query exists
+    if deduplicate and memory_store:
+        for _id, prev_user, prev_emb in reversed(memory_store[-25:]):
+            if user_clean.lower() == prev_user.lower():
+                logger.debug(f"Skipping exact duplicate memory: '{user_clean}'")
+                return None
+            if emb_arr.shape == prev_emb.shape and cosine_sim(emb_arr, prev_emb) >= sim_threshold:
+                logger.debug(f"Skipping semantically redundant memory (>={sim_threshold}): '{user_clean}'")
+                return None
+
+    new_id = save_local(user_clean, bot_text, emb_arr.tolist())
+    memory_store.append((new_id, user_clean, emb_arr))
 
     if is_online():
         try:
-            save_cloud(user, bot_text, emb_arr.tolist())
+            save_cloud(user_clean, bot_text, emb_arr.tolist())
         except Exception:
             pass
 
@@ -126,19 +155,21 @@ def store_memory(user: str, bot):
     try:
         data = load_personality()
         fh = data.get("full_history", [])
-        fh.append({"user": user, "bot": bot_text})
+        fh.append({"user": user_clean, "bot": bot_text})
         # Keep rolling window of last 30 pairs
         data["full_history"] = fh[-30:]
         # Track simple user-message list for summarization trigger
         h = data.get("history", [])
-        h.append(user)
+        h.append(user_clean)
         data["history"] = h[-20:]
         save_personality(data)
     except Exception as e:
         logger.error(f"Failed to update personality history: {e}")
 
+    return new_id
 
-def search_memory(query: str) -> list:
+
+def search_memory(query: str, min_score: float = 0.25) -> list:
     """Return top-5 most semantically similar stored user messages."""
     query_embedding = embed(query)
     try:
@@ -147,19 +178,55 @@ def search_memory(query: str) -> list:
         return []
 
     scored = []
-    for text, emb in memory_store:
+    for _id, text, emb in memory_store:
         try:
             score = cosine_sim(query_embedding, emb)
         except Exception:
             score = 0.0
-        scored.append((score, text))
+        if score >= min_score:
+            scored.append((score, text))
 
     scored.sort(reverse=True, key=lambda x: x[0])
     return [t for _, t in scored[:5]]
 
 
-def retrieve_memory(query: str) -> list:
-    """Return top-10 most relevant (user, bot) pairs from SQLite, ranked by embedding similarity."""
+def delete_memory(identifier: str) -> bool:
+    """Delete memories by integer ID or string query match.
+
+    Parameters:
+        identifier: Either a string representation of record ID or substring to match.
+    """
+    if not identifier:
+        return False
+
+    success = False
+    if identifier.strip().isdigit():
+        mid = int(identifier.strip())
+        success = delete_memory_by_id(mid)
+    else:
+        cnt = delete_memory_by_text(identifier.strip())
+        success = cnt > 0
+
+    if success:
+        reload_memory_store()
+    return success
+
+
+def clear_memory() -> int:
+    """Clear all memories and refresh cache."""
+    global memory_store
+    cnt = clear_all_memory()
+    memory_store = []
+    data = load_personality()
+    data["history"] = []
+    data["full_history"] = []
+    data["summary"] = ""
+    save_personality(data)
+    return cnt
+
+
+def retrieve_memory(query: str, limit: int = 10, min_similarity: float = 0.0) -> list:
+    """Return most relevant (id, user, bot, score) records from SQLite ranked by cosine similarity."""
     rows = get_all()
     if not rows:
         return []
@@ -168,7 +235,8 @@ def retrieve_memory(query: str) -> list:
     try:
         query_embedding = np.array(query_embedding)
     except Exception:
-        return [(None, r[1], r[2]) for r in rows[-10:]]
+        # Fallback to recency order
+        return [(r[0], r[1], r[2]) for r in rows[-limit:]]
 
     scored = []
     for row in rows:
@@ -177,11 +245,13 @@ def retrieve_memory(query: str) -> list:
             score = cosine_sim(query_embedding, emb)
         except Exception:
             score = 0.0
-        scored.append((score, row))
+
+        if score >= min_similarity:
+            scored.append((score, row))
 
     scored.sort(reverse=True, key=lambda x: x[0])
-    top_rows = [r[1] for r in scored[:10]]
-    return [(None, row[1], row[2]) for row in top_rows]
+    top_rows = [r[1] for r in scored[:limit]]
+    return [(row[0], row[1], row[2]) for row in top_rows]
 
 
 def get_rich_context(query: str, n_recent: int = 6, n_semantic: int = 5) -> str:

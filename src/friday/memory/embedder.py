@@ -33,12 +33,50 @@ finally:
     sys.stderr = _saved_stderr
 
 
-def embed(text):
+def embed(text: str) -> list[float]:
+    """Generate normalized vector embedding for text.
+
+    Uses SentenceTransformer if available; otherwise uses a deterministic word-frequency
+    and character-ngram feature hashing vector that preserves lexical similarity.
+    """
     if model:
-        return model.encode(text, show_progress_bar=False).tolist()
-    # Lightweight fallback: deterministic hashed vector
+        try:
+            return model.encode(text, show_progress_bar=False).tolist()
+        except Exception:
+            pass
+
+    # Deterministic lexical-semantic feature hashing vector (dimension 128)
+    # Maps overlapping word tokens and character 3-grams to index bins
+    import re
     import hashlib
-    h = hashlib.sha256(text.encode('utf-8')).digest()
-    # convert bytes to small float list
-    vec = [((b / 255.0) - 0.5) for b in h[:32]]
+
+    dim = 128
+    vec = [0.0] * dim
+
+    clean_text = text.lower().strip()
+    words = re.findall(r"\b\w+\b", clean_text)
+    if not words and clean_text:
+        words = [clean_text]
+
+    # 1. Word unigram features
+    for w in words:
+        h = int(hashlib.md5(w.encode("utf-8")).hexdigest(), 16)
+        idx = h % dim
+        sign = 1.0 if (h >> 8) % 2 == 0 else -1.0
+        vec[idx] += 2.0 * sign
+
+    # 2. Character 3-gram features
+    padded = f" {clean_text} "
+    for i in range(len(padded) - 2):
+        ngram = padded[i:i+3]
+        h = int(hashlib.md5(ngram.encode("utf-8")).hexdigest(), 16)
+        idx = h % dim
+        sign = 1.0 if (h >> 8) % 2 == 0 else -1.0
+        vec[idx] += 0.5 * sign
+
+    # L2 normalize
+    norm = sum(x * x for x in vec) ** 0.5
+    if norm > 0:
+        vec = [round(x / norm, 6) for x in vec]
+
     return vec
