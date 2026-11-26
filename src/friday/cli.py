@@ -99,6 +99,28 @@ def build_parser() -> argparse.ArgumentParser:
         help="List available local speech synthesis voices.",
     )
     parser.add_argument(
+        "--list-memory",
+        action="store_true",
+        help="List stored persistent conversation memories.",
+    )
+    parser.add_argument(
+        "--search-memory",
+        type=str,
+        default=None,
+        help="Search stored memories by semantic similarity.",
+    )
+    parser.add_argument(
+        "--delete-memory",
+        type=str,
+        default=None,
+        help="Delete memory entry by ID or keyword query.",
+    )
+    parser.add_argument(
+        "--clear-memory",
+        action="store_true",
+        help="Clear all stored conversation memories (privacy control).",
+    )
+    parser.add_argument(
         "--voice",
         type=str,
         default=None,
@@ -259,6 +281,50 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"  RAM Usage (Delta):            {mem_after - mem_before:.2f} MB")
         print(f"  Peak Process RSS:             {mem_after:.2f} MB")
         print(f"  Speech Success Rate:          {'100%' if success else 'Failed'}")
+        return 0
+
+    if args.list_memory:
+        from friday.memory.local import get_all
+
+        memories = get_all()
+        if not memories:
+            print("No persistent memories stored yet.")
+            return 0
+        print(f"Stored Memories ({len(memories)} total entries):")
+        for m in memories[-20:]:
+            print(f"  [{m[0]}] User: {m[1]}")
+            print(f"       Friday: {str(m[2])[:80]}...")
+        return 0
+
+    if args.search_memory:
+        from friday.memory.memory_manager import retrieve_memory
+
+        results = retrieve_memory(args.search_memory, limit=5, min_similarity=0.1)
+        if not results:
+            print(f"No relevant memories found matching '{args.search_memory}'.")
+            return 0
+        print(f"Top memories matching '{args.search_memory}':")
+        for r in results:
+            print(f"  [{r[0]}] User: {r[1]}")
+            print(f"       Friday: {str(r[2])[:100]}...")
+        return 0
+
+    if args.delete_memory:
+        from friday.memory.memory_manager import delete_memory
+
+        success = delete_memory(args.delete_memory)
+        if success:
+            print(f"Successfully deleted memory entry matching '{args.delete_memory}'.")
+            return 0
+        else:
+            print(f"No memory entry found matching '{args.delete_memory}'.")
+            return 1
+
+    if args.clear_memory:
+        from friday.memory.memory_manager import clear_memory
+
+        deleted = clear_memory()
+        print(f"All stored memories cleared ({deleted} entries removed). Privacy status: CLEAN.")
         return 0
 
     if args.validate_reference:

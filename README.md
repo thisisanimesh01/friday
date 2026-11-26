@@ -136,9 +136,10 @@ python3 -m compileall -q .
 * **Phase 3 — Hearing & Voice Input:** Completed (Microphone capture, local Whisper STT, Hey Friday wake word, continuous listening).
 * **Phase 4 — Hinata Voice & Speech Output:** Completed (Local TTS, voice model feasibility, voice profile tuning, streaming speech, hands-free conversation).
 * **Phase 5 — Personality & Advanced Memory:**
-  - **Milestone 5.1:** Consistent Friday Personality & Terminal-Only Architecture — **Current**.
-  - **Milestone 5.2:** Contextual Memory Improvements — **Next**.
-  - **Milestone 5.3:** Personal Preferences & Recall.
+  - **Milestone 5.1:** Consistent Friday Personality & Terminal-Only Architecture — Completed.
+  - **Milestone 5.1.1:** Hinata Neural Voice Integration (Kokoro-82M ONNX @ 1.14x speed) — Completed.
+  - **Milestone 5.2:** Contextual Memory Improvements — **Current**.
+  - **Milestone 5.3:** Personal Preferences & Recall — **Next**.
   - **Milestone 5.4:** Memory Privacy & Management.
 * **Phase 6 — macOS Control & Automation:** Application management, AppleScript/Shortcuts, system controls, confirmation framework.
 * **Phase 7 — Vision & Screen Awareness:** Permission-controlled screenshots, local OCR, document understanding, window awareness.

@@ -2,7 +2,18 @@
 
 All notable changes to **Friday** are documented in this file.
 
-## [Unreleased] - Phase 5, Milestone 5.1: Consistent Friday Personality & Terminal-Only Architecture
+## [Unreleased] - Phase 5, Milestone 5.2: Contextual Memory Improvements
+- **Short-Term Conversational Context:** Injected recent multi-turn conversation context (`full_history`) directly into local LLM generation.
+- **Persistent Long-Term Memory:** Stored conversation turns and memory items offline in SQLite (`memory.db`) with zero external cloud dependencies.
+- **Semantic Retrieval & Cosine Similarity:** Integrated feature hashing and vector similarity scoring to automatically recall relevant facts and preferences during conversation and post-restart sessions.
+- **Duplicate Prevention:** Added semantic deduplication (similarity cutoff >= 0.95) to prevent storing duplicate user turns.
+- **Memory Deletion & Inspection CLI:** Added CLI flags `--list-memory`, `--search-memory <query>`, `--delete-memory <id_or_text>`, and `--clear-memory` for transparency and user control.
+- **Preserved Approved Voice:** Maintained approved Hinata neural voice embedding and 1.14x speaking speed.
+
+## [Phase 5, Milestone 5.1.1] - Hinata Neural Voice Integration
+- **Kokoro-82M ONNX Integration:** Replaced native macOS fallback with approved Hinata Hyuga neural voice model at 1.14x speed.
+
+## [Phase 5, Milestone 5.1] - Consistent Friday Personality & Terminal-Only Architecture
 - **Centralized Identity & Profile:** Added `src/friday/personality/` defining single source of truth for Friday's assistant identity, calm professional traits, and Hinata-inspired gentle warmth.
 - **Terminal-Only Architecture:** Audited codebase confirming 0 HTML/CSS/JS frontend files, 0 GUI frameworks, and 0 web UI servers. Sanitized terminal escape sequences against ANSI/OSC injection.
 - **Compact Personality Prompts:** Implemented compact personality prompt generator (<140 tokens) preserving Apple Silicon M1 context windows while strictly isolating personality from structured tool routing.
