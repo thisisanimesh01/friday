@@ -41,7 +41,7 @@ class VoiceRegistry:
 
     def _register_default_profiles(self) -> None:
         # 1. hinata / friday-gentle: Default Hinata Hyuga neural voice
-        # Soft, warm, calm feminine voice with gentle conversational pacing
+        # Soft, warm, calm feminine voice with gentle conversational pacing (+15% tuned speed: 190 wpm)
         self.register(
             VoiceProfile(
                 profile_id="hinata",
@@ -49,7 +49,7 @@ class VoiceRegistry:
                 engine="neural",
                 primary_voice="hinata",
                 hindi_voice="Lekha",
-                speech_rate=165,
+                speech_rate=190,
                 fallback_voice="Samantha",
                 volume=1.0,
                 description="Soft, gentle, warm feminine voice with calm delivery conditioned for Hinata Hyuga.",
@@ -65,7 +65,7 @@ class VoiceRegistry:
                 engine="neural",
                 primary_voice="hinata",
                 hindi_voice="Lekha",
-                speech_rate=165,
+                speech_rate=190,
                 fallback_voice="Samantha",
                 volume=1.0,
                 description="Soft, calm, and reassuring feminine voice with gentle conversational pacing.",

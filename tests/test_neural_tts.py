@@ -91,15 +91,31 @@ def test_voice_manager_neural_speech_execution():
     mock_neural = MagicMock(spec=NeuralTTSEngine)
     mock_neural.is_available.return_value = True
     mock_neural.speak.return_value = True
+    mock_neural.speed = 1.09
 
     mock_native = MagicMock(spec=NativeTTSEngine)
 
     manager = VoiceManager(neural_engine=mock_neural, native_engine=mock_native)
-    success = manager.speak("Test sentence", rate=165)
+    success = manager.speak("Test sentence", rate=190)
 
     assert success is True
-    mock_neural.speak.assert_called_once_with("Test sentence", speed=0.89)
+    mock_neural.speak.assert_called_once_with("Test sentence", speed=1.09)
     mock_native.speak.assert_not_called()
+
+
+def test_neural_engine_speed_configuration(monkeypatch):
+    # Default speed should be 1.09 (+15%)
+    engine_default = NeuralTTSEngine()
+    assert abs(engine_default.speed - 1.09) < 0.01
+
+    # Explicit constructor override
+    engine_custom = NeuralTTSEngine(speed=1.20)
+    assert abs(engine_custom.speed - 1.20) < 0.01
+
+    # Environment variable override
+    monkeypatch.setenv("TTS_SPEED", "1.14")
+    engine_env = NeuralTTSEngine()
+    assert abs(engine_env.speed - 1.14) < 0.01
 
 
 def test_voice_manager_stop_stops_both_backends():

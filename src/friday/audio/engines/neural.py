@@ -63,7 +63,7 @@ class NeuralTTSEngine:
     def __init__(
         self,
         model_dir: Optional[Union[str, Path]] = None,
-        speed: float = 0.95,
+        speed: Optional[float] = None,
         lang: str = "en-us",
     ):
         self.model_dir = Path(model_dir) if model_dir else self.DEFAULT_VOICE_DIR
@@ -72,7 +72,12 @@ class NeuralTTSEngine:
         self.hinata_vector_path = self.model_dir / self.HINATA_VECTOR_FILENAME
         self.reference_wav_path = self.model_dir / self.REFERENCE_WAV_FILENAME
 
-        self.speed = speed
+        # Configurable speed: priority given to passed param -> env var TTS_SPEED -> 1.09 (+15% of baseline 0.95)
+        if speed is not None:
+            self.speed = float(speed)
+        else:
+            env_speed = os.getenv("TTS_SPEED")
+            self.speed = float(env_speed) if env_speed else 1.09
         self.lang = lang
         self.sample_rate = 24000
 
