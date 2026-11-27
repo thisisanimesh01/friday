@@ -506,8 +506,6 @@ def create_default_registry() -> ActionRegistry:
         check_screen_recording_permission,
         discover_displays,
         get_frontmost_window_bounds,
-        issue_single_use_capture_authorization,
-        revoke_capture_authorization,
     )
 
     def _capture_screen_handler(
@@ -674,7 +672,6 @@ def create_default_registry() -> ActionRegistry:
     from friday.macos.system_settings import (
         generate_system_health_report,
         get_audio_devices,
-        get_audio_volume,
         get_bluetooth_status,
         get_display_brightness,
         get_focus_mode,
@@ -685,7 +682,6 @@ def create_default_registry() -> ActionRegistry:
         set_appearance,
         set_audio_device,
         set_audio_mute,
-        set_audio_volume,
         set_bluetooth_power,
         set_display_brightness,
         set_wifi_power,
@@ -931,13 +927,13 @@ def create_default_registry() -> ActionRegistry:
 
     # 32. Milestone 6.5 Desktop Workflows
     from friday.macos.workflows import (
+        WorkflowDefinition,
         default_workflow_engine,
         delete_custom_workflow,
         get_builtin_workflows,
         list_custom_workflows,
         request_workflow_stop,
         save_custom_workflow,
-        WorkflowDefinition,
     )
 
     def _run_workflow_handler(workflow_name: str, confirmed: bool = False, simulated: bool = False) -> dict[str, Any]:
@@ -1148,6 +1144,66 @@ def create_default_registry() -> ActionRegistry:
             description="Get display configuration and screen coordinates.",
             risk=RiskTier.READ_ONLY,
             handler=_get_display_layout_handler,
+        )
+    )
+
+    # 37. Milestone 7.4: Visual Document Understanding & Intelligence
+    def _inspect_document_handler(
+        file_path: str,
+        dry_run: bool = False,
+        is_private_session: bool = False,
+    ) -> dict[str, Any]:
+        from friday.macos.document_intelligence import process_document
+
+        res = process_document(file_path=file_path, dry_run=dry_run, is_private_session=is_private_session)
+        return res.to_dict()
+
+    def _summarize_document_handler(
+        file_path: str,
+        dry_run: bool = False,
+        is_private_session: bool = False,
+    ) -> dict[str, Any]:
+        from friday.macos.document_intelligence import summarize_document
+
+        summary = summarize_document(file_path=file_path, dry_run=dry_run, is_private_session=is_private_session)
+        return {"status": "success", "file_path": file_path, "summary": summary}
+
+    def _ask_document_handler(
+        file_path: str,
+        question: str,
+        dry_run: bool = False,
+        is_private_session: bool = False,
+    ) -> dict[str, Any]:
+        from friday.macos.document_intelligence import answer_document_question
+
+        answer = answer_document_question(file_path=file_path, question=question, dry_run=dry_run, is_private_session=is_private_session)
+        return {"status": "success", "file_path": file_path, "question": question, "answer": answer}
+
+    reg.register(
+        ActionDefinition(
+            name="inspect_document",
+            description="Extract text, pages, and tables from an authorized PDF or document file.",
+            risk=RiskTier.READ_ONLY,
+            handler=_inspect_document_handler,
+            arg_schema={"file_path": str},
+        )
+    )
+    reg.register(
+        ActionDefinition(
+            name="summarize_document",
+            description="Generate a grounded summary of an authorized document using local Ollama model.",
+            risk=RiskTier.READ_ONLY,
+            handler=_summarize_document_handler,
+            arg_schema={"file_path": str},
+        )
+    )
+    reg.register(
+        ActionDefinition(
+            name="ask_document",
+            description="Answer questions grounded in document text with citations.",
+            risk=RiskTier.READ_ONLY,
+            handler=_ask_document_handler,
+            arg_schema={"file_path": str, "question": str},
         )
     )
 

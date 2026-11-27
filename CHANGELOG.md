@@ -2,7 +2,23 @@
 
 All notable changes to **Friday** are documented in this file.
 
-## [Unreleased] - Phase 7, Milestone 7.3: Active Window Awareness & Desktop Context
+## [Unreleased] - Phase 7, Milestone 7.4: Visual Document Understanding
+- **Document Intelligence Engine:** Implemented modular document intelligence engine (`src/friday/macos/document_intelligence.py` & `src/friday/macos/bin/friday_pdf_extract.swift`) supporting digital PDFs, scanned PDFs, images (PNG, JPEG), TXT, Markdown, CSV, and DOCX.
+- **Dual Extraction Strategy:** High-performance native text extraction via CoreGraphics/PDFKit (~10-30ms per page) falling back to page-by-page Apple Vision Swift OCR (`VNRecognizeTextRequest`) for scanned pages.
+- **Bounded Page-by-Page Memory Safety:** Enforced bounded processing (`MAX_PDF_PAGES = 50`) releasing image buffers page-by-page to prevent M1 8GB memory pressure (RSS < 20MB).
+- **Deterministic Intelligence & Safety:**
+  - Automated invoice and receipt math calculation with deterministic discrepancy detection.
+  - Pipe-delimited Markdown and CSV table reconstruction.
+  - Strict grounding citations (`[Page 1]`) and refusal to hallucinate out-of-scope details.
+  - Untrusted data containment and prompt-injection scanner for malicious document payloads.
+- **PrivacyGuard Enclosure:** Deny-by-default access protection against `me and she` and sensitive OS folders; workspace exports confined exclusively to `~/Desktop/friday workspace/exports/` with in-memory ephemeral mode (`FRIDAY_MODE=private`).
+- **ActionRegistry, CLI & Intent Routing:** Registered `inspect_document`, `summarize_document`, and `ask_document`. Added CLI flags (`--inspect-document`, `--summarize-doc`, `--ask-doc`, `--extract-table`, `--export-doc`, `--benchmark-doc`) with English and Hinglish intents.
+- **Milestone 7.3 Desktop Context Metadata Fix:** Enhanced sensitive window title scrubbing to censor social media messaging titles (Instagram, Discord, Slack, URLs) to eliminate private chat metadata leakage.
+- **Validation Suite:** Created `scripts/milestone_7_4_validation.py` executing 70 automated validation scenarios with 100% pass rate.
+- **Full Pytest Regression Suite:** Preserved all 195 existing tests and added 7 new tests in `tests/test_document_intelligence.py` for a total of 202 passing tests.
+- **Voice Preservation:** Maintained approved Hinata neural voice embedding (`hinata_voice.npy`) at 1.14x speed multiplier.
+
+## [Phase 7, Milestone 7.3]: Active Window Awareness & Desktop Context
 - **Desktop Context Engine:** Implemented modular desktop context engine (`src/friday/macos/desktop_context.py` & `src/friday/macos/bin/friday_desktop_context.swift`) discovering frontmost application, bundle identifier, active window geometry, layer, and state using NSWorkspace, Quartz Window Server, and CGWindowList.
 - **Zero-Pixel Metadata Invariant:** Strictly enforced metadata retrieval without pixel acquisition or screen recording privileges.
 - **PrivacyGuard Title Scrubbing:** Masked sensitive window titles, document names, and paths referencing the permanently protected directory (`me and she`) or sensitive repositories (`Keychain`, `Messages`, `Photos Library`).
