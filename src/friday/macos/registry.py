@@ -1207,6 +1207,48 @@ def create_default_registry() -> ActionRegistry:
         )
     )
 
+    # 38. Milestone 7.5: Vision Privacy & Sensitive Data Redaction
+    def _redact_text_handler(
+        text: str,
+        mask_style: str = "token",
+    ) -> dict[str, Any]:
+        from friday.macos.redaction import SensitiveDataRedactor
+        redactor = SensitiveDataRedactor(mask_style=mask_style)
+        res = redactor.redact_text(text)
+        return res.to_dict()
+
+    def _redact_image_handler(
+        image_path: str,
+        bounding_boxes_json: str,
+        output_filename: str | None = None,
+    ) -> dict[str, Any]:
+        import json
+
+        from friday.macos.redaction import SensitiveDataRedactor
+        redactor = SensitiveDataRedactor()
+        boxes = json.loads(bounding_boxes_json)
+        out_p = redactor.redact_image_boxes(image_path, boxes, output_filename=output_filename)
+        return {"status": "success", "redacted_image_path": str(out_p)}
+
+    reg.register(
+        ActionDefinition(
+            name="redact_text",
+            description="Deterministically mask sensitive credentials, API keys, paths, and identifiers in text.",
+            risk=RiskTier.READ_ONLY,
+            handler=_redact_text_handler,
+            arg_schema={"text": str},
+        )
+    )
+    reg.register(
+        ActionDefinition(
+            name="redact_image",
+            description="Mask bounding boxes in an authorized workspace image, saving a redacted copy.",
+            risk=RiskTier.LOW,
+            handler=_redact_image_handler,
+            arg_schema={"image_path": str, "bounding_boxes_json": str},
+        )
+    )
+
     return reg
 
 

@@ -32,6 +32,7 @@ import subprocess
 import time
 import uuid
 from dataclasses import asdict, dataclass
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 from typing import Any
 
@@ -208,35 +209,79 @@ def parse_plaintext_tables(text: str) -> list[list[list[str]]]:
 
 
 def calculate_numeric_totals(text: str) -> dict[str, Any]:
-    """Deterministically calculate invoice/receipt numeric totals from text."""
+    """Deterministically calculate invoice/receipt numeric totals from text using exact Decimal arithmetic.
+
+    Supports subtotals, taxes, discounts, declared totals, and multiple currency detection.
+    Never silently merges incompatible currencies.
+    """
     line_items: list[float] = []
+    detected_currencies: set[str] = set()
     declared_total: float | None = None
+    subtotal: float | None = None
+    tax_amount: float | None = None
+    discount_amount: float | None = None
 
     for raw_line in text.splitlines():
         line = raw_line.strip()
         if not line:
             continue
-        # Find currency amounts e.g. $1200.00, ₹5000.00
-        m = re.findall(r"(?:[\$₹]|USD|INR)?\s*([0-9]+(?:\.[0-9]{2}))\b", line)
+
+        # Detect currency symbols
+        if "$" in line or "USD" in line:
+            detected_currencies.add("USD")
+        if "₹" in line or "INR" in line:
+            detected_currencies.add("INR")
+        if "€" in line or "EUR" in line:
+            detected_currencies.add("EUR")
+        if "£" in line or "GBP" in line:
+            detected_currencies.add("GBP")
+
+        # Match decimal amounts
+        m = re.findall(r"(?:[\$₹€£]|USD|INR|EUR|GBP)?\s*([0-9]+(?:\.[0-9]{2}))\b", line)
         if not m:
             continue
-        val = float(m[-1])
-        if re.search(r"(?i)\btotal\b", line):
+        val_dec = Decimal(m[-1])
+        val = float(val_dec)
+
+        line_lower = line.lower()
+        if "subtotal" in line_lower:
+            subtotal = val
+        elif "tax" in line_lower or "gst" in line_lower or "vat" in line_lower:
+            tax_amount = val
+        elif "discount" in line_lower or "coupon" in line_lower:
+            discount_amount = val
+        elif "total" in line_lower:
             declared_total = val
         else:
             line_items.append(val)
 
-    calculated_sum = round(sum(line_items), 2)
+    # Incompatible currency check
+    if len(detected_currencies) > 1:
+        currency_warning = f"Mixed currencies detected ({', '.join(sorted(detected_currencies))}). Refusing to silently combine."
+    else:
+        currency_warning = None
+
+    # Calculate sum using exact Decimal
+    dec_sum = Decimal("0.00")
+    for item in line_items:
+        dec_sum += Decimal(str(item))
+
+    calculated_sum = float(dec_sum.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
     discrepancy = False
     if declared_total is not None:
         discrepancy = abs(calculated_sum - declared_total) > 0.01
 
     return {
         "line_items": line_items,
+        "subtotal": subtotal,
+        "tax_amount": tax_amount,
+        "discount_amount": discount_amount,
         "declared_total": declared_total,
         "calculated_sum": calculated_sum if line_items else (declared_total or 0.0),
         "discrepancy": discrepancy if declared_total is not None else None,
         "item_count": len(line_items),
+        "currencies": sorted(list(detected_currencies)),
+        "currency_warning": currency_warning,
     }
 
 
@@ -335,7 +380,7 @@ def process_document(
     # 4. Digital or Scanned PDF Documents
     elif ext == ".pdf":
         helper = get_pdf_extract_helper_path()
-        tmp_render_dir = Path("/tmp")
+        tmp_render_dir = get_workspace_path("temp")
         cmd = [str(helper), str(valid_path), "--render-images", str(tmp_render_dir)]
 
         try:

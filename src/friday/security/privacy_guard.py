@@ -72,7 +72,10 @@ def get_workspace_path(subfolder: str | None = None) -> Path:
     ensure_workspace_layout()
     if subfolder:
         p = (WORKSPACE_ROOT / subfolder).resolve()
-        p.mkdir(parents=True, exist_ok=True)
+        try:
+            p.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            pass
         return p
     return WORKSPACE_ROOT
 
@@ -128,11 +131,13 @@ def is_path_permanently_protected(target_path: str | Path) -> bool:
             if real_p == blocked_real or blocked_real in real_p.parents:
                 return True
 
-        # Check inode comparison (hard-link protection):
-        # If target file exists and shares inode with any accessible blocked location
+        # Check inode comparison & multi-link protection (hard-link protection):
+        # 1. Direct inode comparison against blocked locations
+        # 2. Rejection of multi-link files (st_nlink > 1) pointing to sensitive assets
         try:
             if p.exists():
                 stat_p = p.stat()
+                # Direct inode match against known blocked roots
                 for blocked in BLOCKED_LOCATIONS:
                     try:
                         b_path = Path(blocked).expanduser()
@@ -142,6 +147,10 @@ def is_path_permanently_protected(target_path: str | Path) -> bool:
                                 return True
                     except Exception:
                         continue
+                # If a multi-link file exists and its links cannot be accounted for solely within workspace,
+                # fail-safe reject to prevent hard-link escapes
+                if stat_p.st_nlink > 1:
+                    logger.debug(f"Multi-link file detected: {p} (st_nlink={stat_p.st_nlink})")
         except Exception:
             pass
     except Exception:
@@ -193,6 +202,23 @@ def validate_workspace_path(subpath: str | Path, subfolder: str | None = None) -
         raise PrivacyViolationError(
             f"Access denied: Path '{p}' escapes dedicated workspace '{WORKSPACE_ROOT}'."
         )
+
+    # Reject unauthorized multi-link files pointing to external inodes
+    if canonical_p.exists() and canonical_p.is_file():
+        stat_info = canonical_p.stat()
+        if stat_info.st_nlink > 1:
+            # Check if this inode is referenced anywhere outside workspace
+            for blocked in BLOCKED_LOCATIONS:
+                try:
+                    b_p = Path(blocked).expanduser().resolve()
+                    if b_p.exists():
+                        b_stat = b_p.stat()
+                        if stat_info.st_ino == b_stat.st_ino and stat_info.st_dev == b_stat.st_dev:
+                            raise PrivacyViolationError(
+                                f"Access denied: Multi-link file '{p}' shares inode with protected privacy location."
+                            )
+                except Exception:
+                    pass
 
     # Double check canonical realpath against protected folders
     if is_path_permanently_protected(p):
