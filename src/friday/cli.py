@@ -207,6 +207,39 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Capture on-demand screenshot saved strictly to friday workspace/screenshots/.",
     )
+    # Milestone 7.1 Screen Capture & Display flags
+    parser.add_argument(
+        "--check-screen-permission",
+        action="store_true",
+        help="Check macOS Screen Recording TCC permission status.",
+    )
+    parser.add_argument(
+        "--discover-displays",
+        action="store_true",
+        help="Discover connected displays, resolutions, and primary/secondary status.",
+    )
+    parser.add_argument(
+        "--capture-region",
+        type=str,
+        default=None,
+        help="Capture specific rectangular region as 'x,y,width,height' (e.g. '100,100,600,400').",
+    )
+    parser.add_argument(
+        "--display-index",
+        type=int,
+        default=1,
+        help="Display index for screen capture (default: 1).",
+    )
+    parser.add_argument(
+        "--cancel-capture",
+        action="store_true",
+        help="Cancel active capture authorization token.",
+    )
+    parser.add_argument(
+        "--simulated-capture",
+        action="store_true",
+        help="Use synthetic test fixture for capture testing without calling native screencapture binary.",
+    )
     parser.add_argument(
         "--target-app",
         type=str,
@@ -739,15 +772,62 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(format_action_result(res))
         return 0 if res.success or res.requires_confirmation else 1
 
+    # Milestone 7.1 Screen Capture & Display CLI Handlers
+    if args.check_screen_permission:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        res = default_registry.execute(name="check_screen_recording_permission")
+        print(format_action_result(res))
+        return 0 if res.data.get("granted") else 1
+
+    if args.discover_displays:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        res = default_registry.execute(name="discover_displays")
+        print(format_action_result(res))
+        return 0
+
+    if args.cancel_capture:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        res = default_registry.execute(name="cancel_capture")
+        print(format_action_result(res))
+        return 0
+
+    if args.capture_region:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        coords = [int(p.strip()) for p in args.capture_region.split(",") if p.strip()]
+        if len(coords) != 4:
+            print("Error: --capture-region requires 4 integers: x,y,width,height")
+            return 1
+
+        res = default_registry.execute(
+            name="capture_screen",
+            dry_run=args.dry_run,
+            confirmed=args.yes,
+            mode="region",
+            region=tuple(coords),
+            simulated=args.simulated_capture,
+        )
+        print(format_action_result(res))
+        return 0 if res.success or res.requires_confirmation else 1
+
     if args.take_screenshot:
         from friday.macos.registry import default_registry
         from friday.macos.router import format_action_result
 
         res = default_registry.execute(
-            name="capture_screenshot",
+            name="capture_screen",
             dry_run=args.dry_run,
             confirmed=args.yes,
             mode=args.take_screenshot,
+            display_index=args.display_index,
+            simulated=args.simulated_capture,
         )
         print(format_action_result(res))
         return 0 if res.success or res.requires_confirmation else 1
