@@ -142,7 +142,7 @@ python3 -m compileall -q .
   - **Milestone 6.2.1:** Privacy Hardening & Real-World Validation — **Completed**.
   - **Milestone 6.3:** AppleScript & Shortcuts Automation — **Completed**.
   - **Milestone 6.4:** System Settings & Audio/Display Controls — **Completed**.
-  - **Milestone 6.5:** Multi-Step Desktop Workflows — **Next**.
+  - **Milestone 6.5:** Multi-Step Desktop Workflows — **Completed**.
 * **Phase 7 — Vision & Screen Awareness:** Permission-controlled screenshots, local OCR, document understanding, window awareness.
 * **Phase 8 — Online Intelligence & Plugins:** Internet tool improvements, web research, browser automation, productivity plugins.
 * **Phase 9 — Personal Developer Assistant:** Project workspace awareness, code analysis & debugging, Git/GitHub assistance, safe terminal execution.

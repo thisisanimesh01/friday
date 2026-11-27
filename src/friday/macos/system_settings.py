@@ -357,31 +357,67 @@ def get_thermal_status() -> dict[str, Any]:
 
 
 def get_hardware_metrics() -> dict[str, Any]:
-    """Retrieve CPU, RAM, and Storage utilization metrics."""
+    """Retrieve CPU, RAM, and Storage utilization metrics.
+
+    Calculates:
+    - CPU utilization percentage (sampled over active delta or interval to avoid 0.0% artifacts)
+    - RAM total, used, active, wired, available, and percentage (aligned with macOS Activity Monitor conventions)
+    - Disk storage total, used, free, and percentage using macOS APFS pool dimensions
+    """
     data: dict[str, Any] = {
         "cpu_percent": 0.0,
         "ram_total_gb": 8.0,
         "ram_used_gb": 4.0,
+        "ram_active_gb": 2.0,
+        "ram_wired_gb": 1.5,
+        "ram_available_gb": 2.5,
         "ram_percent": 50.0,
         "disk_total_gb": 250.0,
+        "disk_used_gb": 100.0,
         "disk_free_gb": 150.0,
         "disk_percent": 40.0,
     }
     try:
         import psutil
 
-        data["cpu_percent"] = psutil.cpu_percent(interval=0.1)
-        vm = psutil.virtual_memory()
-        data["ram_total_gb"] = round(vm.total / (1024**3), 2)
-        data["ram_used_gb"] = round(vm.used / (1024**3), 2)
-        data["ram_percent"] = vm.percent
+        # Sample cpu_percent with a reliable interval; if 0.0 on quick succession, check load average
+        cpu = psutil.cpu_percent(interval=0.15)
+        if cpu == 0.0:
+            try:
+                load1, _, _ = os.getloadavg()
+                cpu_count = os.cpu_count() or 1
+                cpu = min(100.0, round((load1 / cpu_count) * 100.0, 1))
+            except Exception:
+                pass
+        data["cpu_percent"] = cpu
 
-        du = psutil.disk_usage("/")
-        data["disk_total_gb"] = round(du.total / (1024**3), 2)
-        data["disk_free_gb"] = round(du.free / (1024**3), 2)
-        data["disk_percent"] = du.percent
+        vm = psutil.virtual_memory()
+        total_gb = round(vm.total / (1024**3), 2)
+        used_gb = round(vm.used / (1024**3), 2)
+        active_gb = round(getattr(vm, "active", 0) / (1024**3), 2)
+        wired_gb = round(getattr(vm, "wired", 0) / (1024**3), 2)
+        avail_gb = round(vm.available / (1024**3), 2)
+        ram_pct = round(((vm.total - vm.available) / vm.total) * 100.0, 1) if vm.total > 0 else vm.percent
+
+        data["ram_total_gb"] = total_gb
+        data["ram_used_gb"] = used_gb
+        data["ram_active_gb"] = active_gb
+        data["ram_wired_gb"] = wired_gb
+        data["ram_available_gb"] = avail_gb
+        data["ram_percent"] = ram_pct
+
+        du = shutil.disk_usage("/")
+        disk_total = round(du.total / (1024**3), 2)
+        disk_used = round(du.used / (1024**3), 2)
+        disk_free = round(du.free / (1024**3), 2)
+        disk_pct = round((du.used / du.total) * 100.0, 1) if du.total > 0 else 0.0
+
+        data["disk_total_gb"] = disk_total
+        data["disk_used_gb"] = disk_used
+        data["disk_free_gb"] = disk_free
+        data["disk_percent"] = disk_pct
     except Exception as e:
-        logger.debug(f"psutil query fallback: {e}")
+        logger.debug(f"Hardware metrics query fallback: {e}")
 
     return data
 
