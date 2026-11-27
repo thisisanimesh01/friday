@@ -844,6 +844,102 @@ def create_default_registry() -> ActionRegistry:
         )
     )
 
+    # 32. Milestone 6.5 Desktop Workflows
+    from friday.macos.workflows import (
+        default_workflow_engine,
+        delete_custom_workflow,
+        get_builtin_workflows,
+        list_custom_workflows,
+        request_workflow_stop,
+        save_custom_workflow,
+        WorkflowDefinition,
+    )
+
+    def _run_workflow_handler(workflow_name: str, confirmed: bool = False, simulated: bool = False) -> dict[str, Any]:
+        res = default_workflow_engine.execute_workflow(workflow_name, dry_run=simulated, confirmed=confirmed)
+        return {
+            "status": res.status.value,
+            "workflow_id": res.workflow_id,
+            "total_steps": res.total_steps,
+            "executed_steps": res.executed_steps,
+            "successful_steps": res.successful_steps,
+            "failed_steps": res.failed_steps,
+            "duration_s": res.duration_s,
+            "rolled_back": res.rolled_back,
+            "error": res.error,
+            "message": res.message,
+        }
+
+    def _list_workflows_handler() -> dict[str, Any]:
+        builtins = get_builtin_workflows()
+        customs = list_custom_workflows()
+        b_list = [{"id": k, "name": v.name, "description": v.description, "steps_count": len(v.steps)} for k, v in builtins.items()]
+        c_list = [{"id": v.id, "name": v.name, "description": v.description, "steps_count": len(v.steps)} for v in customs]
+        return {
+            "built_in": b_list,
+            "custom": c_list,
+            "total_count": len(b_list) + len(c_list),
+        }
+
+    def _stop_workflow_handler() -> dict[str, Any]:
+        return request_workflow_stop()
+
+    def _create_workflow_handler(definition_json: str) -> dict[str, Any]:
+        try:
+            data = json.loads(definition_json)
+            wf_def = WorkflowDefinition.from_dict(data)
+            return save_custom_workflow(wf_def)
+        except Exception as e:
+            return {"error": f"Failed to parse workflow JSON: {e}"}
+
+    def _delete_workflow_handler(workflow_id: str) -> dict[str, Any]:
+        return delete_custom_workflow(workflow_id)
+
+    reg.register(
+        ActionDefinition(
+            name="run_workflow",
+            description="Execute a multi-step desktop workflow by name.",
+            risk=RiskTier.MEDIUM,
+            handler=_run_workflow_handler,
+            arg_schema={"workflow_name": str},
+        )
+    )
+    reg.register(
+        ActionDefinition(
+            name="list_workflows",
+            description="List available built-in and custom desktop workflows.",
+            risk=RiskTier.READ_ONLY,
+            handler=_list_workflows_handler,
+        )
+    )
+    reg.register(
+        ActionDefinition(
+            name="stop_workflow",
+            description="Immediately stop / cancel any currently active desktop workflow.",
+            risk=RiskTier.LOW,
+            handler=_stop_workflow_handler,
+        )
+    )
+    reg.register(
+        ActionDefinition(
+            name="create_workflow",
+            description="Create a custom workflow definition from JSON.",
+            risk=RiskTier.MEDIUM,
+            handler=_create_workflow_handler,
+            arg_schema={"definition_json": str},
+        )
+    )
+    reg.register(
+        ActionDefinition(
+            name="delete_workflow",
+            description="Delete a custom workflow from the workspace.",
+            risk=RiskTier.HIGH,
+            handler=_delete_workflow_handler,
+            arg_schema={"workflow_id": str},
+            requires_confirmation=True,
+        )
+    )
+
     return reg
 
 

@@ -67,6 +67,16 @@ WORKSPACE_SUBDIRS = [
 ]
 
 
+def get_workspace_path(subfolder: str | None = None) -> Path:
+    """Return the absolute path to a workspace folder, creating it if needed."""
+    ensure_workspace_layout()
+    if subfolder:
+        p = (WORKSPACE_ROOT / subfolder).resolve()
+        p.mkdir(parents=True, exist_ok=True)
+        return p
+    return WORKSPACE_ROOT
+
+
 class PrivacyViolationError(PermissionError):
     """Raised when an action or path violates PrivacyGuard invariants."""
     pass

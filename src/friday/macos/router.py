@@ -56,12 +56,12 @@ ROUTING_PATTERNS = [
     ),
     # Launch application (e.g., "open calculator", "launch terminal", "calculator kholo", "start brave")
     (
-        re.compile(r"(?i)\b(?:open|launch|start|chalu\s+karo|kholo)\s+([a-zA-Z0-9_\s]+?)(?:\s+app|\s+application|\s+kholo|\s+chalu\s+karo)?$"),
+        re.compile(r"(?i)\b(?:open|launch|start|chalu\s+karo|kholo)\s+(?!developer\s+mode|study\s+mode|night\s+mode|focus\s+mode|system\s+health|python\s+project|workspace\s+organization|morning\s+routine|workflow)([a-zA-Z0-9_\s]+?)(?:\s+app|\s+application|\s+kholo|\s+chalu\s+karo)?$"),
         "launch_app",
         lambda m, text: {"app_name": m.group(1).strip()},
     ),
     (
-        re.compile(r"(?i)\b([a-zA-Z0-9_]+)\s+(?:kholo|chalu\s+karo|open\s+karo)\b"),
+        re.compile(r"(?i)\b(?!developer|study|night|focus|mode|system|health|python|project|workspace|organization|morning|routine)([a-zA-Z0-9_]+)\s+(?:kholo|chalu\s+karo|open\s+karo)\b"),
         "launch_app",
         lambda m, text: {"app_name": m.group(1).strip()},
     ),
@@ -83,7 +83,7 @@ ROUTING_PATTERNS = [
     ),
     # Switch application (e.g., "switch to terminal", "focus notes", "terminal pe switch karo")
     (
-        re.compile(r"(?i)\b(?:switch\s+to|focus|bring\s+up)\s+(?!dark\s+mode|light\s+mode)([a-zA-Z0-9_\s]+?)(?:\s+app|\s+application)?$"),
+        re.compile(r"(?i)\b(?:switch\s+to|focus|bring\s+up)\s+(?!dark\s+mode|light\s+mode|focus\s+mode|mode)([a-zA-Z0-9_\s]+?)(?:\s+app|\s+application)?$"),
         "switch_app",
         lambda m, text: {"app_name": m.group(1).strip()},
     ),
@@ -262,7 +262,7 @@ ROUTING_PATTERNS = [
     ),
     # Focus Mode / Do Not Disturb
     (
-        re.compile(r"(?i)\b(?:focus\s+mode|do\s+not\s+disturb|dnd\s+status)\b"),
+        re.compile(r"(?i)\b(?:is\s+focus\s+mode|focus\s+mode\s+status|do\s+not\s+disturb\s+status|dnd\s+status)\b"),
         "get_focus_mode",
         lambda m, text: {},
     ),
@@ -342,6 +342,66 @@ ROUTING_PATTERNS = [
         re.compile(r"(?i)\b(?:system\s+health\s+report|generate\s+report|health\s+report|system\s+summary\s+report)\b"),
         "generate_health_report",
         lambda m, text: {},
+    ),
+    # ── Milestone 6.5 Desktop Workflows Patterns (English, Hindi, Hinglish) ───
+    # Stop active workflow
+    (
+        re.compile(r"(?i)\b(?:stop\s+(?:the\s+)?workflow|workflow\s+roko|cancel\s+workflow|stop\s+current\s+workflow)\b"),
+        "stop_workflow",
+        lambda m, text: {},
+    ),
+    # List workflows
+    (
+        re.compile(r"(?i)\b(?:list\s+workflows|what\s+workflows|available\s+workflows|show\s+workflows)\b"),
+        "list_workflows",
+        lambda m, text: {},
+    ),
+    # Built-in direct triggers
+    (
+        re.compile(r"(?i)\b(?:start|run|launch|activate|chalu\s+karo)?\s*(?:developer\s+mode|dev\s+mode)(?:\s+chalu\s+karo|\s+start)?\b"),
+        "run_workflow",
+        lambda m, text: {"workflow_name": "developer_mode"},
+    ),
+    (
+        re.compile(r"(?i)\b(?:start|run|launch|activate|chalu\s+karo)?\s*(?:study\s+mode)(?:\s+chalu\s+karo|\s+start)?\b"),
+        "run_workflow",
+        lambda m, text: {"workflow_name": "study_mode"},
+    ),
+    (
+        re.compile(r"(?i)\b(?:start|run|launch|activate|chalu\s+karo)?\s*(?:system\s+health\s+check)(?:\s+chalu\s+karo|\s+start)?\b"),
+        "run_workflow",
+        lambda m, text: {"workflow_name": "system_health_check"},
+    ),
+    (
+        re.compile(r"(?i)\b(?:start|run|launch|activate|setup|chalu\s+karo)?\s*(?:python\s+project\s+setup|setup\s+python\s+project)(?:\s+chalu\s+karo|\s+start)?\b"),
+        "run_workflow",
+        lambda m, text: {"workflow_name": "python_project_setup"},
+    ),
+    (
+        re.compile(r"(?i)\b(?:start|run|launch|activate|chalu\s+karo)?\s*(?:morning\s+routine)(?:\s+chalu\s+karo|\s+start)?\b"),
+        "run_workflow",
+        lambda m, text: {"workflow_name": "morning_routine"},
+    ),
+    (
+        re.compile(r"(?i)\b(?:start|run|launch|activate|chalu\s+karo)?\s*(?:night\s+mode)(?:\s+chalu\s+karo|\s+start)?\b"),
+        "run_workflow",
+        lambda m, text: {"workflow_name": "night_mode"},
+    ),
+    (
+        re.compile(r"(?i)\b(?:start|run|launch|activate|chalu\s+karo)?\s*(?:focus\s+mode)(?:\s+chalu\s+karo|\s+start)?\b"),
+        "run_workflow",
+        lambda m, text: {"workflow_name": "focus_mode"},
+    ),
+    (
+        re.compile(r"(?i)\b(?:start|run|launch|activate|organize|chalu\s+karo)?\s*(?:workspace\s+organization|organize\s+workspace)(?:\s+chalu\s+karo|\s+start)?\b"),
+        "run_workflow",
+        lambda m, text: {"workflow_name": "workspace_organization"},
+    ),
+    # Generic run workflow: "run workflow <name>" or "execute workflow <name>"
+    (
+        re.compile(r"(?i)\b(?:run\s+workflow|execute\s+workflow|start\s+workflow)\s+([a-zA-Z0-9_\-]+)\b"),
+        "run_workflow",
+        lambda m, text: {"workflow_name": m.group(1).strip().lower()},
     ),
 ]
 
@@ -557,5 +617,37 @@ def format_action_result(action_result: ActionResult) -> str:
         if "error" in data:
             return f"Health report error: {data['error']}"
         return f"System health report generated: {data.get('file_path')} (Saved in friday workspace/reports/)."
+
+    # ── Milestone 6.5 Workflow Formatters ────────────────────────────────────
+    if act == "run_workflow" and isinstance(data, dict):
+        if data.get("error"):
+            rb = " (Changes rolled back)" if data.get("rolled_back") else ""
+            return f"Workflow '{data.get('workflow_id')}' {data.get('status').lower()}: {data.get('error')}{rb}"
+        return f"Workflow '{data.get('workflow_id')}' completed successfully ({data.get('successful_steps')}/{data.get('total_steps')} steps in {data.get('duration_s')}s)."
+
+    if act == "list_workflows" and isinstance(data, dict):
+        lines = []
+        lines.append(f"Available Workflows ({data.get('total_count', 0)} total):")
+        lines.append("Built-in:")
+        for w in data.get("built_in", []):
+            lines.append(f"  • {w['name']} ({w['id']}) - {w['description']} [{w['steps_count']} steps]")
+        if data.get("custom"):
+            lines.append("Custom:")
+            for w in data.get("custom", []):
+                lines.append(f"  • {w['name']} ({w['id']}) - {w['description']} [{w['steps_count']} steps]")
+        return "\n".join(lines)
+
+    if act == "stop_workflow" and isinstance(data, dict):
+        return f"Workflow Stop: {data.get('message')}"
+
+    if act == "create_workflow" and isinstance(data, dict):
+        if "error" in data:
+            return f"Create workflow error: {data['error']}"
+        return f"Workflow '{data.get('id')}' saved successfully in workspace workflows."
+
+    if act == "delete_workflow" and isinstance(data, dict):
+        if "error" in data:
+            return f"Delete workflow error: {data['error']}"
+        return f"Workflow '{data.get('id')}' deleted successfully."
 
     return str(data)

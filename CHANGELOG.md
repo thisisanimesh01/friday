@@ -2,7 +2,37 @@
 
 All notable changes to **Friday** are documented in this file.
 
-## [Unreleased] - Phase 6, Milestone 6.4: System Settings & Audio/Display Controls
+## [Unreleased] - Phase 6, Milestone 6.5: Multi-Step Desktop Workflows
+- **Desktop Workflow Engine:** Implemented sequential execution engine (`src/friday/macos/workflows.py`) converting natural language requests and structured definitions into allowlisted `ActionRegistry` operations.
+- **Built-in Workflow Catalog:** Configured 8 out-of-the-box workflows:
+  - `developer_mode`: Switches appearance to dark mode, lowers focused volume, launches Terminal, snaps window to left-half.
+  - `study_mode`: Enables Do Not Disturb Focus Mode and mutes audio output.
+  - `system_health_check`: Samples battery, thermal warnings, CPU/RAM/Disk metrics, and generates a health report in workspace reports.
+  - `python_project_setup`: Initializes template Python project structure inside `~/Desktop/friday workspace/projects/<name>/`.
+  - `morning_routine`: Switches to daytime light mode, sets volume to 45%, and reports battery status.
+  - `night_mode`: Switches to dark mode, dims volume to 15%, and enables Do Not Disturb.
+  - `focus_mode`: Activates Do Not Disturb and mutes background notifications.
+  - `workspace_organization`: Ensures standard workspace folders (`reports/`, `workflows/`, `projects/`, `exports/`, `logs/`) exist.
+- **Custom Workflow Management (CRUD):** Created custom workflow definition storage strictly inside `~/Desktop/friday workspace/workflows/<id>.json` with schema validation, preview, execution, and deletion controls.
+- **Execution Resilience & Control:**
+  - Enforced dependency gating: prerequisite failure immediately stops dependent step execution.
+  - Added bounded retries (maximum 2 retries, 3 total attempts) preventing infinite execution loops.
+  - Implemented safe rollback of reversible operations upon failure or cancellation.
+  - Added real-time workflow cancellation signaling ("Friday, stop the workflow", "workflow roko", `--stop-workflow`).
+  - Enforced step and overall workflow timeouts.
+- **Privacy & Security Guardrails:**
+  - Single-use media authorization invariant: automated workflows cannot schedule or inherit camera captures or screenshots.
+  - Disallows arbitrary shell, Python, or script execution in workflow steps.
+  - Preserved deny-by-default isolation for `~/Desktop/me and she/`.
+- **System Monitoring Refinements:**
+  - Corrected RAM metric calculations to report Active vs Total memory aligned with macOS Activity Monitor conventions.
+  - Eliminated 0.0% CPU sampling artifacts using delta sampling with load average fallbacks.
+  - Handled APFS pool disk dimensions cleanly via `shutil.disk_usage`.
+- **Comprehensive Validation Suite:** Created `scripts/milestone_6_5_validation.py` executing 60 automated scenarios across Built-ins (20), Custom CRUD (10), Resilience & Control (10), Privacy & Security (10), and System Monitoring & Regressions (10) with 100% pass rate.
+- **Phase 6 Architecture Audit:** Authored `docs/phase_6_audit.md` auditing Phase 6 completion across Milestones 6.1 through 6.5.
+- **Voice Preservation:** Maintained approved Hinata neural voice embedding (`hinata_voice.npy`) at 1.14x speed multiplier.
+
+## [Phase 6, Milestone 6.4] - System Settings & Audio/Display Controls
 - **System Settings & Hardware Controls:** Implemented volume get/set/mute/unmute, audio input/output device discovery, display brightness management, dark/light appearance toggles, and Focus Mode/DND controls (`src/friday/macos/system_settings.py`).
 - **Comprehensive Hardware Monitoring:** Implemented real-time monitoring of CPU usage, RAM utilization, root disk space, battery charge/charging state, thermal warning state/throttling alerts, Wi-Fi status/SSID, and Bluetooth power state.
 - **System Health Report Generation:** Added `generate_system_health_report` creating structured Markdown audit summaries saved strictly into `~/Desktop/friday workspace/reports/`.

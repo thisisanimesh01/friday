@@ -347,6 +347,41 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Generate a comprehensive system health report saved in friday workspace/reports/.",
     )
+    # Milestone 6.5 Desktop Workflows flags
+    parser.add_argument(
+        "--run-workflow",
+        type=str,
+        default=None,
+        help="Execute a multi-step desktop workflow by ID or name.",
+    )
+    parser.add_argument(
+        "--list-workflows",
+        action="store_true",
+        help="List available built-in and custom desktop workflows.",
+    )
+    parser.add_argument(
+        "--workflow-preview",
+        type=str,
+        default=None,
+        help="Preview steps and dependencies of a workflow by ID.",
+    )
+    parser.add_argument(
+        "--stop-workflow",
+        action="store_true",
+        help="Signal cancellation to stop any currently running desktop workflow.",
+    )
+    parser.add_argument(
+        "--create-workflow",
+        type=str,
+        default=None,
+        help="Create a custom workflow from a JSON string or file path.",
+    )
+    parser.add_argument(
+        "--delete-workflow",
+        type=str,
+        default=None,
+        help="Delete a custom workflow from the workspace (requires --yes).",
+    )
     parser.add_argument(
         "--voice",
         type=str,
@@ -919,6 +954,82 @@ def main(argv: Sequence[str] | None = None) -> int:
         res = default_registry.execute(name="generate_health_report")
         print(format_action_result(res))
         return 0 if res.success else 1
+
+    # Milestone 6.5 Workflow CLI Handlers
+    if args.list_workflows:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        res = default_registry.execute(name="list_workflows")
+        print(format_action_result(res))
+        return 0
+
+    if args.stop_workflow:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        res = default_registry.execute(name="stop_workflow")
+        print(format_action_result(res))
+        return 0
+
+    if args.workflow_preview:
+        from friday.macos.workflows import get_workflow_by_id
+
+        wf = get_workflow_by_id(args.workflow_preview)
+        if not wf:
+            print(f"Error: Workflow '{args.workflow_preview}' not found.")
+            return 1
+        print(f"Workflow: {wf.name} ({wf.id}) [Timeout: {wf.timeout_s}s, Author: {wf.author}]")
+        print(f"Description: {wf.description}")
+        print(f"Steps ({len(wf.steps)}):")
+        for i, s in enumerate(wf.steps, 1):
+            deps = f" [Depends on: {', '.join(s.depends_on)}]" if s.depends_on else ""
+            rb = " [Reversible]" if s.reversible else ""
+            retries = f" [Retries: {s.retry_count}]" if s.retry_count else ""
+            print(f"  {i}. {s.id}: action '{s.action}' args={s.args}{deps}{rb}{retries}")
+        return 0
+
+    if args.run_workflow:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        res = default_registry.execute(
+            name="run_workflow",
+            workflow_name=args.run_workflow,
+            simulated=args.dry_run,
+            confirmed=args.yes,
+        )
+        print(format_action_result(res))
+        return 0 if res.success else 1
+
+    if args.create_workflow:
+        import json
+        from pathlib import Path
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        raw_json = args.create_workflow
+        if Path(raw_json).exists():
+            raw_json = Path(raw_json).read_text(encoding="utf-8")
+
+        res = default_registry.execute(
+            name="create_workflow",
+            definition_json=raw_json,
+        )
+        print(format_action_result(res))
+        return 0 if res.success else 1
+
+    if args.delete_workflow:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        res = default_registry.execute(
+            name="delete_workflow",
+            workflow_id=args.delete_workflow,
+            confirmed=args.yes,
+        )
+        print(format_action_result(res))
+        return 0 if res.success or res.requires_confirmation else 1
 
     if args.validate_reference:
         from friday.audio.voice_reference import VoiceReferenceValidator
