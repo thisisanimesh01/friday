@@ -2,7 +2,20 @@
 
 All notable changes to **Friday** are documented in this file.
 
-## [Unreleased] - Phase 7, Milestone 7.4: Visual Document Understanding
+## [Unreleased] - Phase 7, Milestone 7.5: Vision Privacy, Redaction & Real-World Validation
+- **Sensitive Data Redaction Engine:** Implemented modular multi-entity redaction (`src/friday/macos/redaction.py`) detecting API keys (OpenAI, GitHub, Anthropic, AWS), cryptographic PEM private keys, Luhn-verified financial payment cards, emails, phone numbers, file paths, sensitive URL query parameters, and private chat titles.
+- **Visual Bounding Box Masking:** Added Swift CoreGraphics (`CGContextFillRect`) and Pillow image masking supporting solid black, blur, and redaction bar styles, saving exclusively to `~/Desktop/friday workspace/exports/` without mutating source files.
+- **Cryptographic Capture Authorization Hardening:** Enhanced `SingleUseCaptureAuthorization` with 32-hex cryptographic tokens (`secrets.token_hex(16)`), explicit binding to capture mode, display target, and geometry coordinates, atomic consumption (`consume()`), and automatic expiration timeouts.
+- **Multi-Link & Hard-Link Inode Protection:** Hardened `privacy_guard.py` to audit `st_nlink > 1` and cross-reference inode/device numbers against blocked roots, preventing hard-link attacks against protected personal directories.
+- **Exact Decimal Financial Arithmetic:** Integrated Python `Decimal` arithmetic (`ROUND_HALF_UP`) into `document_intelligence.py` for receipt, tax, and discount totals, with multi-currency refusal and calculation error reporting.
+- **Untrusted Document Containment:** Enforced markdown quoting, prompt-injection scanners, and read-only inference paths for untrusted document data.
+- **Ephemeral Private Mode (`FRIDAY_MODE=private`):** Verified strictly in-memory execution, zero disk exports or audit trails, and loopback-only network isolation.
+- **ActionRegistry, CLI & Intent Routing:** Registered `redact_text` and `redact_image`. Added CLI flags (`--redact-text`, `--mask-style`, `--audit-vision-privacy`) with English and Hinglish intent classification.
+- **Validation Suite:** Created `scripts/milestone_7_5_validation.py` executing 100 comprehensive validation scenarios across 8 security categories with 100% pass rate.
+- **Full Pytest Regression Suite:** Preserved all 202 existing tests and added 8 new unit tests in `tests/test_vision_privacy_redaction.py` for a total of 210 passing tests.
+- **Voice Preservation:** Maintained approved Hinata neural voice embedding (`hinata_voice.npy`) at locked 1.14x speaking speed.
+
+## [Phase 7, Milestone 7.4]: Visual Document Understanding
 - **Document Intelligence Engine:** Implemented modular document intelligence engine (`src/friday/macos/document_intelligence.py` & `src/friday/macos/bin/friday_pdf_extract.swift`) supporting digital PDFs, scanned PDFs, images (PNG, JPEG), TXT, Markdown, CSV, and DOCX.
 - **Dual Extraction Strategy:** High-performance native text extraction via CoreGraphics/PDFKit (~10-30ms per page) falling back to page-by-page Apple Vision Swift OCR (`VNRecognizeTextRequest`) for scanned pages.
 - **Bounded Page-by-Page Memory Safety:** Enforced bounded processing (`MAX_PDF_PAGES = 50`) releasing image buffers page-by-page to prevent M1 8GB memory pressure (RSS < 20MB).

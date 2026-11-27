@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import datetime
 import re
+import secrets
 import struct
 import subprocess
 import time
@@ -51,16 +52,23 @@ SCREENSHOTS_SUBDIR = "screenshots"
 
 # ── Single-Use Authorization Token ───────────────────────────────────────────
 
+
 @dataclass
 class SingleUseCaptureAuthorization:
-    nonce: str
+    nonce: str  # 32-byte cryptographically secure hex token
     mode: str  # 'fullscreen', 'window', 'region'
     target: str | None
+    geometry: tuple[int, int, int, int] | None  # (x, y, width, height) if region
     issued_at: float
     timeout_s: float = 30.0
     consumed: bool = False
 
-    def is_valid(self, mode: str, target: str | None = None) -> tuple[bool, str]:
+    def is_valid(
+        self,
+        mode: str,
+        target: str | None = None,
+        geometry: tuple[int, int, int, int] | None = None,
+    ) -> tuple[bool, str]:
         if self.consumed:
             return False, "Capture authorization token has already been consumed."
         if (time.time() - self.issued_at) > self.timeout_s:
@@ -69,7 +77,13 @@ class SingleUseCaptureAuthorization:
             return False, f"Authorization token mode mismatch (expected '{self.mode}', requested '{mode}')."
         if self.target and target and self.target != target:
             return False, f"Authorization token target mismatch (expected '{self.target}', requested '{target}')."
+        if self.geometry and geometry and self.geometry != geometry:
+            return False, f"Authorization token geometry mismatch (expected '{self.geometry}', requested '{geometry}')."
         return True, "Valid"
+
+    def consume(self) -> None:
+        """Atomically mark token as consumed to prevent replay."""
+        self.consumed = True
 
 
 _ACTIVE_CAPTURE_AUTH: SingleUseCaptureAuthorization | None = None
@@ -78,19 +92,21 @@ _ACTIVE_CAPTURE_AUTH: SingleUseCaptureAuthorization | None = None
 def issue_single_use_capture_authorization(
     mode: str,
     target: str | None = None,
+    geometry: tuple[int, int, int, int] | None = None,
     timeout_s: float = 30.0,
 ) -> SingleUseCaptureAuthorization:
-    """Issue a fresh, single-use capture authorization token."""
+    """Issue a fresh, cryptographically bound single-use capture authorization token."""
     global _ACTIVE_CAPTURE_AUTH
     token = SingleUseCaptureAuthorization(
-        nonce=str(uuid.uuid4())[:8],
+        nonce=secrets.token_hex(16),  # 32-character crypto-random hex
         mode=mode.lower().strip(),
         target=target,
+        geometry=geometry,
         issued_at=time.time(),
         timeout_s=timeout_s,
     )
     _ACTIVE_CAPTURE_AUTH = token
-    logger.info(f"Issued single-use capture authorization {token.nonce} for mode '{mode}'")
+    logger.info(f"Issued cryptographic single-use capture authorization {token.nonce[:8]}... for mode '{mode}'")
     return token
 
 

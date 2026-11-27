@@ -484,6 +484,12 @@ ROUTING_PATTERNS = [
         "inspect_document",
         lambda m, text: {"file_path": m.group(1).strip()},
     ),
+    # ── Milestone 7.5: Vision Privacy & Redaction Intents ────────────────────
+    (
+        re.compile(r"(?i)\b(?:redact\s+text|mask\s+sensitive\s+data|sanitize\s+text)\s+([^\s].*)\b"),
+        "redact_text",
+        lambda m, text: {"text": m.group(1).strip()},
+    ),
 ]
 
 
