@@ -266,6 +266,87 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Approve an installed macOS shortcut for automated execution.",
     )
+    # Milestone 6.4 System Settings & Hardware Controls flags
+    parser.add_argument(
+        "--mute",
+        action="store_true",
+        help="Mute macOS system audio output.",
+    )
+    parser.add_argument(
+        "--unmute",
+        action="store_true",
+        help="Unmute macOS system audio output.",
+    )
+    parser.add_argument(
+        "--brightness",
+        type=int,
+        default=None,
+        help="Set macOS display brightness level (0-100).",
+    )
+    parser.add_argument(
+        "--appearance",
+        choices=["dark", "light", "toggle"],
+        default=None,
+        help="Set or toggle macOS system appearance mode (dark, light, toggle).",
+    )
+    parser.add_argument(
+        "--list-audio-devices",
+        action="store_true",
+        help="List available macOS audio input and output devices.",
+    )
+    parser.add_argument(
+        "--focus-mode",
+        choices=["status", "toggle"],
+        default=None,
+        help="Query or toggle macOS Focus Mode / Do Not Disturb.",
+    )
+    parser.add_argument(
+        "--system-metrics",
+        action="store_true",
+        help="Display live CPU, RAM, and disk utilization metrics.",
+    )
+    parser.add_argument(
+        "--thermal-status",
+        action="store_true",
+        help="Query macOS thermal and throttling status.",
+    )
+    parser.add_argument(
+        "--wifi",
+        choices=["status", "on", "off"],
+        default=None,
+        help="Query or control Wi-Fi networking (power on/off requires --yes).",
+    )
+    parser.add_argument(
+        "--bluetooth",
+        choices=["status", "on", "off"],
+        default=None,
+        help="Query or control Bluetooth adapter (power on/off requires --yes).",
+    )
+    parser.add_argument(
+        "--lock-screen",
+        action="store_true",
+        help="Lock macOS screen display (requires --yes).",
+    )
+    parser.add_argument(
+        "--sleep",
+        action="store_true",
+        help="Put macOS into sleep mode (requires --yes).",
+    )
+    parser.add_argument(
+        "--restart",
+        action="store_true",
+        help="Restart macOS safely protecting unsaved work (requires --yes).",
+    )
+    parser.add_argument(
+        "--shutdown",
+        action="store_true",
+        help="Shut down macOS safely protecting unsaved work (requires --yes).",
+    )
+    parser.add_argument(
+        "--health-report",
+        action="store_true",
+        help="Generate a comprehensive system health report saved in friday workspace/reports/.",
+    )
     parser.add_argument(
         "--voice",
         type=str,
@@ -702,6 +783,142 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         print(format_action_result(res))
         return 0 if res.success or res.requires_confirmation else 1
+
+    # Milestone 6.4 CLI Handlers
+    if args.mute or args.unmute:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        res = default_registry.execute(
+            name="set_mute",
+            dry_run=args.dry_run,
+            confirmed=args.yes,
+            mute=args.mute,
+        )
+        print(format_action_result(res))
+        return 0 if res.success else 1
+
+    if args.brightness is not None:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        res = default_registry.execute(
+            name="set_brightness",
+            dry_run=args.dry_run,
+            confirmed=args.yes,
+            level=args.brightness,
+        )
+        print(format_action_result(res))
+        return 0 if res.success else 1
+
+    if args.appearance:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        if args.appearance == "toggle":
+            res = default_registry.execute(name="toggle_appearance", dry_run=args.dry_run)
+        else:
+            is_dark = args.appearance == "dark"
+            res = default_registry.execute(name="set_appearance", dark_mode=is_dark, dry_run=args.dry_run)
+        print(format_action_result(res))
+        return 0 if res.success else 1
+
+    if args.list_audio_devices:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        res = default_registry.execute(name="get_audio_devices")
+        print(format_action_result(res))
+        return 0
+
+    if args.focus_mode:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        act = "toggle_focus_mode" if args.focus_mode == "toggle" else "get_focus_mode"
+        res = default_registry.execute(name=act, dry_run=args.dry_run)
+        print(format_action_result(res))
+        return 0
+
+    if args.system_metrics:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        res = default_registry.execute(name="get_hardware_metrics")
+        print(format_action_result(res))
+        return 0
+
+    if args.thermal_status:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        res = default_registry.execute(name="get_thermal")
+        print(format_action_result(res))
+        return 0
+
+    if args.wifi:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        if args.wifi == "status":
+            res = default_registry.execute(name="get_wifi")
+        else:
+            pwr = args.wifi == "on"
+            res = default_registry.execute(name="set_wifi_power", enabled=pwr, confirmed=args.yes, dry_run=args.dry_run)
+        print(format_action_result(res))
+        return 0 if res.success or res.requires_confirmation else 1
+
+    if args.bluetooth:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        if args.bluetooth == "status":
+            res = default_registry.execute(name="get_bluetooth")
+        else:
+            pwr = args.bluetooth == "on"
+            res = default_registry.execute(name="set_bluetooth_power", enabled=pwr, confirmed=args.yes, dry_run=args.dry_run)
+        print(format_action_result(res))
+        return 0 if res.success or res.requires_confirmation else 1
+
+    if args.lock_screen:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        res = default_registry.execute(name="lock_screen", confirmed=args.yes, dry_run=args.dry_run)
+        print(format_action_result(res))
+        return 0 if res.success or res.requires_confirmation else 1
+
+    if args.sleep:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        res = default_registry.execute(name="system_sleep", confirmed=args.yes, dry_run=args.dry_run)
+        print(format_action_result(res))
+        return 0 if res.success or res.requires_confirmation else 1
+
+    if args.restart:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        res = default_registry.execute(name="system_restart", confirmed=args.yes, dry_run=args.dry_run)
+        print(format_action_result(res))
+        return 0 if res.success or res.requires_confirmation else 1
+
+    if args.shutdown:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        res = default_registry.execute(name="system_shutdown", confirmed=args.yes, dry_run=args.dry_run)
+        print(format_action_result(res))
+        return 0 if res.success or res.requires_confirmation else 1
+
+    if args.health_report:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        res = default_registry.execute(name="generate_health_report")
+        print(format_action_result(res))
+        return 0 if res.success else 1
 
     if args.validate_reference:
         from friday.audio.voice_reference import VoiceReferenceValidator

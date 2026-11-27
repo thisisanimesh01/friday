@@ -74,10 +74,15 @@ FRIDAY respects macOS TCC (Transparency, Consent, and Control) architecture with
 
 ---
 
-## 7. AppleScript & macOS Shortcuts Automation Security
+## 8. System Settings, Hardware Controls & Health Monitoring Security
 
-* **Strictly Allowlisted Templates Only:** FRIDAY rejects arbitrary or LLM-generated AppleScript. Only statically vetted templates with schema validation can execute.
-* **Prohibited Token Gates:** Pre-flight scanning strictly blocks any script referencing `do shell script`, `administrator privileges`, `sudo`, or `rm -rf`.
-* **Shortcuts Verification & Boundaries:** Installed macOS Shortcuts must be reviewed and explicitly approved (`~/.friday/approved_shortcuts.json`). Unverified shortcuts are blocked.
-* **Process Group Subprocess Cleanup:** Executions use `preexec_fn=os.setsid` and `os.killpg` on timeout, ensuring runaway or hanging osascript/shortcuts sub-processes are terminated cleanly.
-* **Path Confinement:** Shortcut input parameters cannot reference protected paths (`me and she`), and outputs are restricted to `~/Desktop/friday workspace/reports/`.
+* **Mandatory Security Corrections (Milestone 6.4):**
+  - **Global Trash Deletion Disabled:** The `empty_trash` template is permanently disabled to guarantee that FRIDAY never purges or removes files outside `~/Desktop/friday workspace/`.
+  - **Unverified Shortcut Disablement:** Audited default shortcuts; `Quick Note` has been disabled due to external unconfined storage dependencies.
+  - **External Notes Disablement:** Direct Apple Notes creation is disabled to preserve dedicated workspace confinement.
+  - **OS-Level vs. Code-Level Separation:** Synthetic test fixtures explicitly verify that Python path sanitization is distinct from operating system sandboxing and TCC access controls.
+* **Confirmation-Guarded Disruptive Hardware Controls:**
+  - Connectivity (`set_wifi_power`, `set_bluetooth_power`) and power controls (`lock_screen`, `system_sleep`) are classified as HIGH risk and require confirmation.
+  - System restart (`system_restart`) and shutdown (`system_shutdown`) are classified as CRITICAL risk and require fresh, action-specific user confirmation. Force-restarting or killing active processes is prohibited.
+* **Workspace Report Confinement:**
+  - Automated system health summaries are validated to write strictly into `~/Desktop/friday workspace/reports/`. Traversal attempts (`../`, `/`, `~`) trigger immediate `PrivacyViolationError`.

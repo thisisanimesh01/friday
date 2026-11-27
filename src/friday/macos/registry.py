@@ -585,6 +585,265 @@ def create_default_registry() -> ActionRegistry:
         )
     )
 
+    # ── Milestone 6.4 System Settings, Hardware Controls & Monitoring ──────────
+    from friday.macos.system_settings import (
+        generate_system_health_report,
+        get_audio_devices,
+        get_audio_volume,
+        get_bluetooth_status,
+        get_display_brightness,
+        get_focus_mode,
+        get_hardware_metrics,
+        get_thermal_status,
+        get_wifi_status,
+        lock_screen,
+        set_appearance,
+        set_audio_device,
+        set_audio_mute,
+        set_audio_volume,
+        set_bluetooth_power,
+        set_display_brightness,
+        set_wifi_power,
+        system_restart,
+        system_shutdown,
+        system_sleep,
+        toggle_appearance,
+        toggle_audio_mute,
+        toggle_focus_mode,
+    )
+
+    # Wrappers for Confirmation-Guarded Controls
+    def _wifi_power_handler(enabled: bool, **kwargs):
+        confirmed = kwargs.get("confirmed", False)
+        dry_run = kwargs.get("dry_run", False)
+        return set_wifi_power(enabled=enabled, confirmed=confirmed, simulated=dry_run or not confirmed)
+
+    def _bluetooth_power_handler(enabled: bool, **kwargs):
+        confirmed = kwargs.get("confirmed", False)
+        dry_run = kwargs.get("dry_run", False)
+        return set_bluetooth_power(enabled=enabled, confirmed=confirmed, simulated=dry_run or not confirmed)
+
+    def _lock_screen_handler(**kwargs):
+        confirmed = kwargs.get("confirmed", False)
+        dry_run = kwargs.get("dry_run", False)
+        return lock_screen(confirmed=confirmed, simulated=dry_run or not confirmed)
+
+    def _system_sleep_handler(**kwargs):
+        confirmed = kwargs.get("confirmed", False)
+        dry_run = kwargs.get("dry_run", False)
+        return system_sleep(confirmed=confirmed, simulated=dry_run or not confirmed)
+
+    def _system_restart_handler(**kwargs):
+        confirmed = kwargs.get("confirmed", False)
+        dry_run = kwargs.get("dry_run", False)
+        return system_restart(confirmed=confirmed, simulated=dry_run or not confirmed)
+
+    def _system_shutdown_handler(**kwargs):
+        confirmed = kwargs.get("confirmed", False)
+        dry_run = kwargs.get("dry_run", False)
+        return system_shutdown(confirmed=confirmed, simulated=dry_run or not confirmed)
+
+    # 22. Audio Mute
+    reg.register(
+        ActionDefinition(
+            name="set_mute",
+            description="Mute, unmute, or toggle macOS system audio output.",
+            risk=RiskTier.LOW,
+            handler=set_audio_mute,
+            arg_schema={"mute": bool},
+        )
+    )
+
+    # 23. Audio Toggle Mute
+    reg.register(
+        ActionDefinition(
+            name="toggle_mute",
+            description="Toggle current macOS audio mute state.",
+            risk=RiskTier.LOW,
+            handler=toggle_audio_mute,
+        )
+    )
+
+    # 24. List Audio Devices
+    reg.register(
+        ActionDefinition(
+            name="get_audio_devices",
+            description="List available macOS audio input and output devices.",
+            risk=RiskTier.READ_ONLY,
+            handler=get_audio_devices,
+        )
+    )
+
+    # 25. Select Audio Device
+    reg.register(
+        ActionDefinition(
+            name="set_audio_device",
+            description="Select active audio input or output device.",
+            risk=RiskTier.LOW,
+            handler=set_audio_device,
+            arg_schema={"device_name": str, "device_type": str},
+        )
+    )
+
+    # 26. Display Brightness
+    reg.register(
+        ActionDefinition(
+            name="get_brightness",
+            description="Get macOS display brightness level.",
+            risk=RiskTier.READ_ONLY,
+            handler=get_display_brightness,
+        )
+    )
+    reg.register(
+        ActionDefinition(
+            name="set_brightness",
+            description="Set macOS display brightness level (0-100).",
+            risk=RiskTier.LOW,
+            handler=set_display_brightness,
+            arg_schema={"level": int},
+        )
+    )
+
+    # 27. Set Appearance
+    reg.register(
+        ActionDefinition(
+            name="set_appearance",
+            description="Set macOS Dark Mode or Light Mode.",
+            risk=RiskTier.LOW,
+            handler=set_appearance,
+            arg_schema={"dark_mode": bool},
+        )
+    )
+    reg.register(
+        ActionDefinition(
+            name="toggle_appearance",
+            description="Toggle macOS Dark / Light appearance.",
+            risk=RiskTier.LOW,
+            handler=toggle_appearance,
+        )
+    )
+
+    # 28. Focus Mode
+    reg.register(
+        ActionDefinition(
+            name="get_focus_mode",
+            description="Query macOS Focus / Do Not Disturb state.",
+            risk=RiskTier.READ_ONLY,
+            handler=get_focus_mode,
+        )
+    )
+    reg.register(
+        ActionDefinition(
+            name="toggle_focus_mode",
+            description="Toggle macOS Focus Mode / Do Not Disturb.",
+            risk=RiskTier.LOW,
+            handler=toggle_focus_mode,
+        )
+    )
+
+    # 29. Hardware & System Monitoring
+    reg.register(
+        ActionDefinition(
+            name="get_thermal",
+            description="Query macOS thermal state and throttling warnings.",
+            risk=RiskTier.READ_ONLY,
+            handler=get_thermal_status,
+        )
+    )
+    reg.register(
+        ActionDefinition(
+            name="get_hardware_metrics",
+            description="Query CPU, RAM, and Disk storage utilization.",
+            risk=RiskTier.READ_ONLY,
+            handler=get_hardware_metrics,
+        )
+    )
+    reg.register(
+        ActionDefinition(
+            name="get_wifi",
+            description="Query macOS Wi-Fi power and connection status.",
+            risk=RiskTier.READ_ONLY,
+            handler=get_wifi_status,
+        )
+    )
+    reg.register(
+        ActionDefinition(
+            name="get_bluetooth",
+            description="Query macOS Bluetooth power and adapter status.",
+            risk=RiskTier.READ_ONLY,
+            handler=get_bluetooth_status,
+        )
+    )
+
+    # 30. Guarded Connectivity & Power Controls
+    reg.register(
+        ActionDefinition(
+            name="set_wifi_power",
+            description="Turn macOS Wi-Fi on or off (Requires confirmation).",
+            risk=RiskTier.HIGH,
+            handler=_wifi_power_handler,
+            arg_schema={"enabled": bool},
+            requires_confirmation=True,
+        )
+    )
+    reg.register(
+        ActionDefinition(
+            name="set_bluetooth_power",
+            description="Turn macOS Bluetooth on or off (Requires confirmation).",
+            risk=RiskTier.HIGH,
+            handler=_bluetooth_power_handler,
+            arg_schema={"enabled": bool},
+            requires_confirmation=True,
+        )
+    )
+    reg.register(
+        ActionDefinition(
+            name="lock_screen",
+            description="Lock macOS display screen (Requires confirmation).",
+            risk=RiskTier.HIGH,
+            handler=_lock_screen_handler,
+            requires_confirmation=True,
+        )
+    )
+    reg.register(
+        ActionDefinition(
+            name="system_sleep",
+            description="Put macOS to sleep (Requires confirmation).",
+            risk=RiskTier.HIGH,
+            handler=_system_sleep_handler,
+            requires_confirmation=True,
+        )
+    )
+    reg.register(
+        ActionDefinition(
+            name="system_restart",
+            description="Restart macOS safely protecting unsaved work (Requires fresh confirmation).",
+            risk=RiskTier.CRITICAL,
+            handler=_system_restart_handler,
+            requires_confirmation=True,
+        )
+    )
+    reg.register(
+        ActionDefinition(
+            name="system_shutdown",
+            description="Shut down macOS safely protecting unsaved work (Requires fresh confirmation).",
+            risk=RiskTier.CRITICAL,
+            handler=_system_shutdown_handler,
+            requires_confirmation=True,
+        )
+    )
+
+    # 31. System Health Report
+    reg.register(
+        ActionDefinition(
+            name="generate_health_report",
+            description="Generate comprehensive system health report saved in friday workspace/reports/.",
+            risk=RiskTier.LOW,
+            handler=generate_system_health_report,
+            arg_schema={"output_filename": str},
+        )
+    )
+
     return reg
 
 
