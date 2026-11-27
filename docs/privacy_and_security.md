@@ -74,7 +74,10 @@ FRIDAY respects macOS TCC (Transparency, Consent, and Control) architecture with
 
 ---
 
-## 6. Private Session Audit Suppression & Memory Privacy
+## 7. AppleScript & macOS Shortcuts Automation Security
 
-* **Private Sessions:** Audit logging (`AUDIT_LOG_FILE`) and persistent memory writes are completely suppressed during incognito sessions (`--private`).
-* **Global Wipe Confirmation:** Natural-language directives to forget all memories require explicit confirmation (`confirmed=True` or `Yes, confirm forget all`) before permanent SQLite deletion.
+* **Strictly Allowlisted Templates Only:** FRIDAY rejects arbitrary or LLM-generated AppleScript. Only statically vetted templates with schema validation can execute.
+* **Prohibited Token Gates:** Pre-flight scanning strictly blocks any script referencing `do shell script`, `administrator privileges`, `sudo`, or `rm -rf`.
+* **Shortcuts Verification & Boundaries:** Installed macOS Shortcuts must be reviewed and explicitly approved (`~/.friday/approved_shortcuts.json`). Unverified shortcuts are blocked.
+* **Process Group Subprocess Cleanup:** Executions use `preexec_fn=os.setsid` and `os.killpg` on timeout, ensuring runaway or hanging osascript/shortcuts sub-processes are terminated cleanly.
+* **Path Confinement:** Shortcut input parameters cannot reference protected paths (`me and she`), and outputs are restricted to `~/Desktop/friday workspace/reports/`.
