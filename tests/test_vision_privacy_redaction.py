@@ -16,7 +16,6 @@ from friday.macos.registry import create_default_registry
 from friday.macos.router import route_macos_intent
 from friday.security.privacy_guard import (
     PrivacyViolationError,
-    get_workspace_path,
     is_path_permanently_protected,
     validate_workspace_path,
 )
