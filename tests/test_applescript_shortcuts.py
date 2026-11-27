@@ -73,10 +73,27 @@ def test_run_compiled_applescript_blocks_me_and_she_target():
 
 def test_run_compiled_applescript_timeout_process_group():
     """Verify that long-running scripts hit the timeout and terminate process group."""
-    # osascript delay 10
-    success, out, err = run_compiled_applescript("delay 10", timeout_s=0.2)
-    assert not success
-    assert "timed out" in err
+    import shutil
+    import subprocess
+    from unittest.mock import MagicMock, patch
+
+    # If osascript is available (macOS), run real timeout
+    if shutil.which("osascript"):
+        success, out, err = run_compiled_applescript("delay 10", timeout_s=0.2)
+        assert not success
+        assert "timed out" in err
+    else:
+        # On non-macOS CI environments (Linux), mock subprocess.Popen to simulate timeout
+        mock_proc = MagicMock()
+        mock_proc.communicate.side_effect = subprocess.TimeoutExpired(cmd=["osascript"], timeout=0.2)
+        mock_proc.pid = 99999
+        with patch("subprocess.Popen", return_value=mock_proc):
+            with patch("os.killpg") as mock_killpg:
+                with patch("os.getpgid", return_value=99999):
+                    success, out, err = run_compiled_applescript("delay 10", timeout_s=0.2)
+                    assert not success
+                    assert "timed out" in err
+                    mock_killpg.assert_called_once()
 
 
 # ── 2. Allowlisted Templates & Execution ─────────────────────────────────────
