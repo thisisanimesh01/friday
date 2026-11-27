@@ -1,6 +1,6 @@
 """macOS control and permission framework package."""
 
-from macos.registry import (
+from friday.macos.registry import (
     ActionDefinition,
     ActionRegistry,
     ActionResult,
@@ -8,7 +8,7 @@ from macos.registry import (
     default_registry,
     record_audit_log,
 )
-from macos.router import format_action_result, route_macos_intent
+from friday.macos.router import format_action_result, route_macos_intent
 
 __all__ = [
     "ActionDefinition",

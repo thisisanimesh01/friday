@@ -366,7 +366,7 @@ def create_default_registry() -> ActionRegistry:
     )
 
     # ── Milestone 6.2 Actions ─────────────────────────────────────────────────
-    from macos.apps_windows import (
+    from friday.macos.apps_windows import (
         get_active_application,
         hide_application,
         launch_application,
@@ -377,7 +377,7 @@ def create_default_registry() -> ActionRegistry:
         switch_application,
         toggle_fullscreen_window,
     )
-    from macos.media_capture import capture_camera_photo, capture_screenshot
+    from friday.macos.media_capture import capture_camera_photo, capture_screenshot
 
     # 7. Launch application
     reg.register(
@@ -497,6 +497,91 @@ def create_default_registry() -> ActionRegistry:
             risk=RiskTier.MEDIUM,
             handler=capture_screenshot,
             arg_schema={"mode": str, "filename": str, "target_window": str},
+        )
+    )
+
+    # ── Milestone 6.3 AppleScript & Shortcuts Automations ───────────────────────
+    from friday.macos.applescript_automation import (
+        APPLESCRIPT_TEMPLATES,
+        execute_template,
+    )
+    from friday.macos.shortcuts_automation import ShortcutsManager
+
+    # Handler wrappers
+    def _run_applescript_template(template_name: str, params: dict | None = None, **kwargs) -> dict:
+        dry_run = kwargs.get("dry_run", False)
+        confirmed = kwargs.get("confirmed", False)
+        return execute_template(template_name, params=params, dry_run=dry_run, confirmed=confirmed)
+
+    def _list_applescript_templates(**kwargs) -> list[dict]:
+        return [
+            {
+                "name": t.name,
+                "description": t.description,
+                "requires_confirmation": t.requires_confirmation,
+                "parameters": list(t.param_schema.keys()),
+            }
+            for t in APPLESCRIPT_TEMPLATES.values()
+        ]
+
+    shortcuts_mgr = ShortcutsManager()
+
+    def _run_shortcut(
+        shortcut_name: str,
+        input_path: str | None = None,
+        output_filename: str | None = None,
+        **kwargs,
+    ) -> dict:
+        dry_run = kwargs.get("dry_run", False)
+        return shortcuts_mgr.run_shortcut(
+            name=shortcut_name,
+            input_path=input_path,
+            output_filename=output_filename,
+            dry_run=dry_run,
+        )
+
+    def _list_shortcuts(**kwargs) -> list[dict]:
+        return shortcuts_mgr.list_all_shortcuts()
+
+    # 18. Run allowlisted AppleScript template
+    reg.register(
+        ActionDefinition(
+            name="run_script_template",
+            description="Execute a predefined allowlisted AppleScript template with strict argument validation.",
+            risk=RiskTier.LOW,
+            handler=_run_applescript_template,
+            arg_schema={"template_name": str, "params": dict},
+        )
+    )
+
+    # 19. List AppleScript templates
+    reg.register(
+        ActionDefinition(
+            name="list_script_templates",
+            description="List all available allowlisted AppleScript automation templates.",
+            risk=RiskTier.READ_ONLY,
+            handler=_list_applescript_templates,
+        )
+    )
+
+    # 20. Run verified macOS shortcut
+    reg.register(
+        ActionDefinition(
+            name="run_shortcut",
+            description="Execute a verified, approved macOS shortcut with argument validation.",
+            risk=RiskTier.LOW,
+            handler=_run_shortcut,
+            arg_schema={"shortcut_name": str, "input_path": str, "output_filename": str},
+        )
+    )
+
+    # 21. List macOS shortcuts
+    reg.register(
+        ActionDefinition(
+            name="list_shortcuts",
+            description="List installed macOS shortcuts and their security approval status.",
+            risk=RiskTier.READ_ONLY,
+            handler=_list_shortcuts,
         )
     )
 

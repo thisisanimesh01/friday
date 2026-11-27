@@ -2,7 +2,19 @@
 
 All notable changes to **Friday** are documented in this file.
 
-## [Unreleased] - Phase 6, Milestone 6.2.1: Privacy Hardening & Real-World Validation
+## [Unreleased] - Phase 6, Milestone 6.3: AppleScript & Shortcuts Automation
+- **Allowlisted AppleScript Templates:** Implemented modular AppleScript templates framework (`src/friday/macos/applescript_automation.py`) with strict argument sanitization (`_sanitize_applescript_arg`) and schema enforcement. Never runs arbitrary LLM-generated code.
+- **Prohibited Token Security Gates:** Rejects scripts containing `do shell script`, `administrator privileges`, `sudo`, or `rm -rf` prior to compilation or execution.
+- **Process Group Timeout & Cleanup:** Implemented POSIX process group spawning (`os.setsid`) and clean group termination (`os.killpg`) preventing zombie or hanging child processes during automation timeouts.
+- **macOS Shortcuts Automation:** Created `ShortcutsManager` (`src/friday/macos/shortcuts_automation.py`) integrating with `/usr/bin/shortcuts`. Discovers installed shortcuts, manages approval registry, and blocks unverified shortcuts by default.
+- **PrivacyGuard Automation Protection:** Enforced permanent deny-by-default for `~/Desktop/me and she/` across all template arguments, script contents, and shortcut input parameters.
+- **Dedicated Workspace Output Confinement:** Confined all automation outputs strictly to `~/Desktop/friday workspace/reports/`.
+- **ActionRegistry & Intent Routing Integration:** Registered `run_script_template`, `list_script_templates`, `run_shortcut`, and `list_shortcuts` in `ActionRegistry`. Added English, Hindi, and Hinglish intent routing (e.g. `show notification`, `note banao`, `gaana bajao`, `trash khali karo`, `run shortcut <name>`).
+- **CLI Commands:** Added `--run-script`, `--list-scripts`, `--run-shortcut`, `--list-shortcuts`, `--script-title`, `--script-message`, `--shortcut-input`, `--shortcut-output`, and `--approve-shortcut`.
+- **Comprehensive Validation Suite:** Created `scripts/milestone_6_3_validation.py` executing 20 functional runs and 20 security/bypass runs (40/40 passed).
+- **Voice Preservation:** Preserved approved Hinata neural voice embedding and 1.14x speed multiplier.
+
+## [Phase 6, Milestone 6.2.1] - Privacy Hardening & Real-World Validation
 - **Inode Hard-Link Protection:** Hardened `is_path_permanently_protected` in `src/friday/security/privacy_guard.py` to compare filesystem inode (`st_ino`, `st_dev`) numbers, blocking hard-link bypasses of synthetic or protected targets.
 - **Pre-Flight Screen Visibility Scan:** Added `is_protected_content_visible_on_screen` in `src/friday/macos/media_capture.py` scanning visible macOS window titles for protected folder or sensitive repository mentions before capturing screenshots.
 - **Process-Specific Force-Quit:** Replaced unverified `pkill -9 -f` regex termination with verified exact-name PID resolution (`pgrep -x` and System Events PID queries) and targeted `os.kill(pid, 9)`.

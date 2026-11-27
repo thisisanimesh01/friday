@@ -140,8 +140,8 @@ python3 -m compileall -q .
   - **Milestone 6.1:** macOS Control Foundation & Permission Framework — **Completed**.
   - **Milestone 6.2:** Application Management, Window Control & Privacy Protection — **Completed**.
   - **Milestone 6.2.1:** Privacy Hardening & Real-World Validation — **Completed**.
-  - **Milestone 6.3:** AppleScript & Shortcuts Automation — **Next**.
-  - **Milestone 6.4:** System Settings & Audio/Display Controls.
+  - **Milestone 6.3:** AppleScript & Shortcuts Automation — **Completed**.
+  - **Milestone 6.4:** System Settings & Audio/Display Controls — **Next**.
   - **Milestone 6.5:** Multi-Step Desktop Workflows.
 * **Phase 7 — Vision & Screen Awareness:** Permission-controlled screenshots, local OCR, document understanding, window awareness.
 * **Phase 8 — Online Intelligence & Plugins:** Internet tool improvements, web research, browser automation, productivity plugins.

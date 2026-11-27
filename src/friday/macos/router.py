@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 
-from macos.registry import ActionResult, default_registry
+from friday.macos.registry import ActionResult, default_registry
 
 ROUTING_PATTERNS = [
     # Battery checks
@@ -166,6 +166,55 @@ ROUTING_PATTERNS = [
         "capture_screenshot",
         lambda m, text: {"mode": "fullscreen"},
     ),
+    # ── Milestone 6.3 AppleScript & Shortcuts Patterns ─────────────────────────
+    # Notification template (e.g., "show notification Hello", "notification dikhao World")
+    (
+        re.compile(r"(?i)\b(?:show\s+notification|display\s+notification|notification\s+bhejo|notification\s+dikhao)\s+(.+)$"),
+        "run_script_template",
+        lambda m, text: {"template_name": "display_notification", "params": {"title": "FRIDAY", "message": m.group(1).strip()}},
+    ),
+    # Note creation template (e.g., "create note Buy groceries", "note banao Meeting notes")
+    (
+        re.compile(r"(?i)\b(?:create\s+note|make\s+note|new\s+note|note\s+banao|note\s+likho)\s+(.+)$"),
+        "run_script_template",
+        lambda m, text: {"template_name": "create_note", "params": {"title": m.group(1).strip(), "body": "Created by FRIDAY"}},
+    ),
+    # Music play/pause template (e.g., "play music", "pause music", "music chalao", "gaana bajao", "gaana roko")
+    (
+        re.compile(r"(?i)\b(?:play\s+music|pause\s+music|toggle\s+music|music\s+chalao|music\s+roko|gaana\s+bajao|gaana\s+roko)\b"),
+        "run_script_template",
+        lambda m, text: {"template_name": "music_play_pause", "params": {}},
+    ),
+    # Current music track query (e.g., "what is playing", "current track", "kaunsa gaana chal raha hai")
+    (
+        re.compile(r"(?i)\b(?:what\s+(?:is\s+)?playing|current\s+song|current\s+track|which\s+song|kaunsa\s+gaana\s+chal\s+raha\s+hai)\b"),
+        "run_script_template",
+        lambda m, text: {"template_name": "get_current_track", "params": {}},
+    ),
+    # Empty trash template (Destructive, e.g., "empty trash", "kachra saaf karo", "trash khali karo")
+    (
+        re.compile(r"(?i)\b(?:empty\s+trash|clear\s+trash|trash\s+khali\s+karo|kachra\s+saaf\s+karo)\b"),
+        "run_script_template",
+        lambda m, text: {"template_name": "empty_trash", "params": {}},
+    ),
+    # List AppleScript templates (e.g., "list scripts", "list automation templates", "scripts dikhao")
+    (
+        re.compile(r"(?i)\b(?:list\s+scripts|available\s+scripts|automation\s+templates|scripts\s+dikhao)\b"),
+        "list_script_templates",
+        lambda m, text: {},
+    ),
+    # List Shortcuts (e.g., "list shortcuts", "available shortcuts", "shortcuts dikhao")
+    (
+        re.compile(r"(?i)\b(?:list\s+shortcuts|available\s+shortcuts|my\s+shortcuts|shortcuts\s+dikhao)\b"),
+        "list_shortcuts",
+        lambda m, text: {},
+    ),
+    # Run shortcut (e.g., "run shortcut Charger Sound", "execute shortcut Quick Note", "shortcut chalao Charger Sound")
+    (
+        re.compile(r"(?i)\b(?:run\s+shortcut|execute\s+shortcut|shortcut\s+chalao)\s+([a-zA-Z0-9_\s]+?)$"),
+        "run_shortcut",
+        lambda m, text: {"shortcut_name": m.group(1).strip()},
+    ),
 ]
 
 
@@ -283,5 +332,32 @@ def format_action_result(action_result: ActionResult) -> str:
         if "error" in data:
             return f"Screenshot error: {data['error']}"
         return f"Screenshot captured successfully: {data.get('file_path')} (Saved in friday workspace/screenshots/)."
+
+    if act == "run_script_template" and isinstance(data, dict):
+        if "error" in data:
+            return f"Script error: {data['error']}"
+        if data.get("status") == "dry_run":
+            return f"[Dry-Run Preview] Template '{data.get('template')}':\n{data.get('script_preview')}"
+        return f"Automation '{data.get('template')}' executed: {data.get('output', 'Success')}"
+
+    if act == "list_script_templates" and isinstance(data, list):
+        names = [f"• {t['name']} - {t['description']}" for t in data]
+        return "Available AppleScript templates:\n" + "\n".join(names)
+
+    if act == "run_shortcut" and isinstance(data, dict):
+        if "error" in data:
+            return f"Shortcut error: {data['error']}"
+        if data.get("status") == "dry_run":
+            return f"[Dry-Run Preview] Shortcut '{data.get('shortcut')}':\nBoundary: {data.get('resource_boundary')}\nSummary: {data.get('actions_summary')}"
+        return f"Shortcut '{data.get('shortcut')}' executed successfully in {data.get('duration_s', 0)}s."
+
+    if act == "list_shortcuts" and isinstance(data, list):
+        if not data:
+            return "No shortcuts found."
+        lines = []
+        for s in data:
+            appr = "✓ Approved" if s.get("approved") else "✗ Unverified"
+            lines.append(f"• {s['name']} [{appr}] - {s.get('actions_summary', 'No summary')}")
+        return "macOS Shortcuts:\n" + "\n".join(lines)
 
     return str(data)

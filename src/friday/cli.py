@@ -213,6 +213,59 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Target application name for window actions or app operations.",
     )
+    # Milestone 6.3 AppleScript & Shortcuts Automation flags
+    parser.add_argument(
+        "--run-script",
+        type=str,
+        default=None,
+        help="Execute an allowlisted AppleScript automation template by name.",
+    )
+    parser.add_argument(
+        "--list-scripts",
+        action="store_true",
+        help="List available allowlisted AppleScript automation templates.",
+    )
+    parser.add_argument(
+        "--script-title",
+        type=str,
+        default=None,
+        help="Title parameter for AppleScript template.",
+    )
+    parser.add_argument(
+        "--script-message",
+        type=str,
+        default=None,
+        help="Message/body parameter for AppleScript template.",
+    )
+    parser.add_argument(
+        "--run-shortcut",
+        type=str,
+        default=None,
+        help="Execute a verified macOS shortcut by name.",
+    )
+    parser.add_argument(
+        "--list-shortcuts",
+        action="store_true",
+        help="List installed macOS shortcuts and their security approval status.",
+    )
+    parser.add_argument(
+        "--shortcut-input",
+        type=str,
+        default=None,
+        help="Optional input file path for running a macOS shortcut.",
+    )
+    parser.add_argument(
+        "--shortcut-output",
+        type=str,
+        default=None,
+        help="Optional output filename (confined to friday workspace/reports/) for a shortcut.",
+    )
+    parser.add_argument(
+        "--approve-shortcut",
+        type=str,
+        default=None,
+        help="Approve an installed macOS shortcut for automated execution.",
+    )
     parser.add_argument(
         "--voice",
         type=str,
@@ -579,6 +632,73 @@ def main(argv: Sequence[str] | None = None) -> int:
             dry_run=args.dry_run,
             confirmed=args.yes,
             mode=args.take_screenshot,
+        )
+        print(format_action_result(res))
+        return 0 if res.success or res.requires_confirmation else 1
+
+    # Milestone 6.3 CLI Handlers
+    if args.list_scripts:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        res = default_registry.execute(name="list_script_templates")
+        print(format_action_result(res))
+        return 0
+
+    if args.run_script:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        params = {}
+        if args.script_title:
+            params["title"] = args.script_title
+        if args.script_message:
+            params["message"] = args.script_message
+            params["body"] = args.script_message
+
+        res = default_registry.execute(
+            name="run_script_template",
+            dry_run=args.dry_run,
+            confirmed=args.yes,
+            template_name=args.run_script,
+            params=params,
+        )
+        print(format_action_result(res))
+        return 0 if res.success or res.requires_confirmation else 1
+
+    if args.list_shortcuts:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        res = default_registry.execute(name="list_shortcuts")
+        print(format_action_result(res))
+        return 0
+
+    if args.approve_shortcut:
+        from friday.macos.shortcuts_automation import ShortcutsManager
+
+        sm = ShortcutsManager()
+        sm.approve_shortcut(args.approve_shortcut)
+        print(f"Approved shortcut '{args.approve_shortcut}' for automated execution.")
+        return 0
+
+    if args.run_shortcut:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        kwargs = {
+            "shortcut_name": args.run_shortcut,
+        }
+        if args.shortcut_input:
+            kwargs["input_path"] = args.shortcut_input
+        if args.shortcut_output:
+            kwargs["output_filename"] = args.shortcut_output
+
+        res = default_registry.execute(
+            name="run_shortcut",
+            dry_run=args.dry_run,
+            confirmed=args.yes,
+            **kwargs,
         )
         print(format_action_result(res))
         return 0 if res.success or res.requires_confirmation else 1
