@@ -426,6 +426,27 @@ ROUTING_PATTERNS = [
         "run_workflow",
         lambda m, text: {"workflow_name": m.group(1).strip().lower()},
     ),
+    # ── Milestone 7.2: Local OCR & Text Extraction Intents ───────────────────
+    (
+        re.compile(r"(?i)\b(?:extract\s+text\s+from|read\s+text\s+from|ocr\s+image|ocr\s+file|text\s+extract\s+karo)\s+([^\s]+)\b"),
+        "extract_text",
+        lambda m, text: {"image_path": m.group(1).strip()},
+    ),
+    (
+        re.compile(r"(?i)\b(?:what\s+does\s+this\s+image\s+say|is\s+image\s+me\s+kya\s+likha\s+hai)\s*(?:in\s+)?([^\s]+)?\b"),
+        "extract_text",
+        lambda m, text: {"image_path": m.group(1).strip() if m.group(1) else "latest"},
+    ),
+    (
+        re.compile(r"(?i)\b(?:inspect\s+ocr\s+languages|check\s+ocr\s+languages|list\s+ocr\s+languages|ocr\s+languages)\b"),
+        "inspect_ocr_languages",
+        lambda m, text: {},
+    ),
+    (
+        re.compile(r"(?i)\b(?:check\s+ocr\s+status|ocr\s+status|get\s+ocr\s+status)\b"),
+        "get_ocr_engine_status",
+        lambda m, text: {},
+    ),
 ]
 
 
@@ -689,5 +710,39 @@ def format_action_result(action_result: ActionResult) -> str:
         if "error" in data:
             return f"Delete workflow error: {data['error']}"
         return f"Workflow '{data.get('id')}' deleted successfully."
+
+    # ── Milestone 7.2 OCR Formatters ─────────────────────────────────────────
+    if act in ("extract_text", "ocr_image") and isinstance(data, dict):
+        if data.get("error"):
+            return f"OCR Extraction error: {data['error']}"
+        warn_str = ""
+        if data.get("has_prompt_injection"):
+            warn_str = f"\n⚠️ Prompt Injection Alert: Neutralized suspicious command in text ({len(data.get('injection_warnings', []))} pattern matches)."
+        export_str = f" (Saved to {data.get('export_path')})" if data.get("export_path") else ""
+        return (
+            f"Extracted Text [{data.get('engine', 'apple_vision')} | {data.get('latency_seconds', 0.0):.2f}s]{export_str}:\n"
+            f"\"{data.get('text', '').strip()}\"{warn_str}"
+        )
+
+    if act == "inspect_ocr_languages" and isinstance(data, dict):
+        v_langs = data.get("apple_vision", {}).get("supported_languages", [])
+        v_count = len(v_langs)
+        t_langs = data.get("tesseract", {}).get("supported_languages", [])
+        sample_v = ", ".join(v_langs[:8]) + "..." if v_count > 8 else ", ".join(v_langs)
+        return (
+            f"OCR Capabilities:\n"
+            f"  • Primary Engine: {data.get('primary_engine')}\n"
+            f"  • Apple Vision Languages: {v_count} supported ({sample_v})\n"
+            f"  • Tesseract Fallback: {', '.join(t_langs) if t_langs else 'None'}"
+        )
+
+    if act == "get_ocr_engine_status" and isinstance(data, dict):
+        return (
+            f"OCR Engine Status: {data.get('status').upper()}\n"
+            f"  • Active Backend: {data.get('primary_engine')}\n"
+            f"  • Hindi Supported: {data.get('hindi_supported')}\n"
+            f"  • English Supported: {data.get('english_supported')}\n"
+            f"  • Offline Confinement: {data.get('offline_only')}"
+        )
 
     return str(data)

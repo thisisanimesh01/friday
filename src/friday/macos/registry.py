@@ -1025,6 +1025,70 @@ def create_default_registry() -> ActionRegistry:
         )
     )
 
+    # 35. Milestone 7.2: Local OCR & Text Extraction Engine
+    def _extract_text_handler(
+        image_path: str,
+        languages: list[str] | None = None,
+        preferred_engine: str = "auto",
+        export_format: str | None = None,
+        is_private_session: bool = False,
+    ) -> dict[str, Any]:
+        from friday.macos.ocr import extract_text_from_image
+
+        res = extract_text_from_image(
+            image_path=image_path,
+            languages=languages,
+            preferred_engine=preferred_engine,
+            export_format=export_format,
+            is_private_session=is_private_session,
+        )
+        return res.to_dict()
+
+    def _inspect_ocr_languages_handler() -> dict[str, Any]:
+        from friday.macos.ocr import inspect_ocr_languages
+
+        return inspect_ocr_languages()
+
+    def _get_ocr_engine_status_handler() -> dict[str, Any]:
+        from friday.macos.ocr import get_ocr_engine_status
+
+        return get_ocr_engine_status()
+
+    reg.register(
+        ActionDefinition(
+            name="extract_text",
+            description="Extract text and structured bounding boxes from an authorized workspace image.",
+            risk=RiskTier.READ_ONLY,
+            handler=_extract_text_handler,
+            arg_schema={"image_path": str},
+        )
+    )
+    reg.register(
+        ActionDefinition(
+            name="ocr_image",
+            description="Alias for extract_text with optional language and export configuration.",
+            risk=RiskTier.READ_ONLY,
+            handler=_extract_text_handler,
+            arg_schema={"image_path": str},
+        )
+    )
+    reg.register(
+        ActionDefinition(
+            name="inspect_ocr_languages",
+            description="Inspect runtime supported OCR languages and Apple Vision API revisions.",
+            risk=RiskTier.READ_ONLY,
+            handler=_inspect_ocr_languages_handler,
+        )
+    )
+    reg.register(
+        ActionDefinition(
+            name="get_ocr_engine_status",
+            description="Check readiness and capabilities of local offline OCR engine.",
+            risk=RiskTier.READ_ONLY,
+            handler=_get_ocr_engine_status_handler,
+        )
+    )
+
     return reg
 
 

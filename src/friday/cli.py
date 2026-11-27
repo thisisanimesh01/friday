@@ -415,6 +415,46 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Delete a custom workflow from the workspace (requires --yes).",
     )
+    # ── Milestone 7.2: Local OCR & Text Extraction Engine ────────────────────
+    parser.add_argument(
+        "--ocr-image",
+        type=str,
+        default=None,
+        help="Perform offline OCR text extraction on an authorized image path within the Friday workspace.",
+    )
+    parser.add_argument(
+        "--ocr-languages",
+        type=str,
+        default=None,
+        help="Comma-separated language codes for OCR recognition (e.g. 'en-US,hi-IN').",
+    )
+    parser.add_argument(
+        "--ocr-engine",
+        choices=["auto", "apple_vision", "tesseract"],
+        default="auto",
+        help="Select preferred OCR engine backend (default: auto -> apple_vision).",
+    )
+    parser.add_argument(
+        "--ocr-export",
+        choices=["txt", "json"],
+        default=None,
+        help="Save OCR extraction output (txt or json) strictly inside ~/Desktop/friday workspace/exports/.",
+    )
+    parser.add_argument(
+        "--inspect-ocr-languages",
+        action="store_true",
+        help="Inspect runtime supported OCR languages, revisions, and backends.",
+    )
+    parser.add_argument(
+        "--ocr-status",
+        action="store_true",
+        help="Display operational status and readiness of local OCR engines.",
+    )
+    parser.add_argument(
+        "--benchmark-ocr",
+        action="store_true",
+        help="Run comprehensive benchmark on Apple Vision OCR (latency, RSS memory overhead, character accuracy).",
+    )
     parser.add_argument(
         "--voice",
         type=str,
@@ -831,6 +871,79 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         print(format_action_result(res))
         return 0 if res.success or res.requires_confirmation else 1
+
+    # Milestone 7.2 Local OCR CLI Handlers
+    if args.inspect_ocr_languages:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        res = default_registry.execute(name="inspect_ocr_languages")
+        print(format_action_result(res))
+        return 0 if res.success else 1
+
+    if args.ocr_status:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        res = default_registry.execute(name="get_ocr_engine_status")
+        print(format_action_result(res))
+        return 0 if res.success else 1
+
+    if args.ocr_image:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        langs = [l.strip() for l in args.ocr_languages.split(",") if l.strip()] if args.ocr_languages else None
+        res = default_registry.execute(
+            name="extract_text",
+            dry_run=args.dry_run,
+            confirmed=args.yes,
+            image_path=args.ocr_image,
+            languages=langs,
+            preferred_engine=args.ocr_engine,
+            export_format=args.ocr_export,
+            is_private_session=(os.environ.get("FRIDAY_MODE") == "private"),
+        )
+        print(format_action_result(res))
+        return 0 if res.success else 1
+
+    if args.benchmark_ocr:
+        import resource
+        import time
+        from friday.macos.ocr import create_synthetic_ground_truth_image, extract_text_from_image
+
+        print("Running FRIDAY Apple Vision OCR Benchmark...")
+        # ru_maxrss on macOS returns bytes
+        mem_before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / (1024 * 1024)
+
+        test_text = "FRIDAY Autonomous Assistant - Milestone 7.2"
+        img_path = create_synthetic_ground_truth_image(test_text, "benchmark_ocr_sample.png", font_size=20, width=800, height=120)
+
+        # Cold inference
+        t0 = time.perf_counter()
+        res_cold = extract_text_from_image(img_path)
+        cold_lat = time.perf_counter() - t0
+
+        # Warm inferences
+        warm_lats = []
+        for _ in range(5):
+            t_start = time.perf_counter()
+            extract_text_from_image(img_path)
+            warm_lats.append(time.perf_counter() - t_start)
+
+        mem_after = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / (1024 * 1024)
+        avg_warm = sum(warm_lats) / len(warm_lats)
+        exact_match = (res_cold.text.strip() == test_text)
+
+        print("\nOCR Benchmark Results:")
+        print(f"  Primary Engine:        {res_cold.engine}")
+        print(f"  Cold Inference Latency: {cold_lat * 1000:.1f} ms ({cold_lat:.3f}s)")
+        print(f"  Warm Inference (avg):   {avg_warm * 1000:.1f} ms ({avg_warm:.3f}s)")
+        print(f"  RAM Delta (Incremental): {max(0.0, mem_after - mem_before):.2f} MB")
+        print(f"  Peak RSS:               {mem_after:.2f} MB")
+        print(f"  Accuracy (Exact Match): {'100%' if exact_match else 'Mismatch'}")
+        print(f"  Extracted Sample:       \"{res_cold.text.strip()}\"")
+        return 0
 
     # Milestone 6.3 CLI Handlers
     if args.list_scripts:
