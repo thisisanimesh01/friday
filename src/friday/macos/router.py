@@ -473,6 +473,17 @@ ROUTING_PATTERNS = [
         "get_active_window_context",
         lambda m, text: {},
     ),
+    # ── Milestone 7.4: Visual Document Understanding Intents ─────────────────
+    (
+        re.compile(r"(?i)\b(?:summarize\s+document|summarize\s+doc|summarize\s+pdf|document\s+summarize\s+karo)\s+([^\s]+)\b"),
+        "summarize_document",
+        lambda m, text: {"file_path": m.group(1).strip()},
+    ),
+    (
+        re.compile(r"(?i)\b(?:inspect\s+document|inspect\s+doc|inspect\s+pdf|read\s+document|extract\s+document\s+text)\s+([^\s]+)\b"),
+        "inspect_document",
+        lambda m, text: {"file_path": m.group(1).strip()},
+    ),
 ]
 
 
@@ -804,5 +815,24 @@ def format_action_result(action_result: ActionResult) -> str:
             pri = " [Primary]" if sc.get("is_primary") else ""
             lines.append(f"  • Display {sc.get('index')}{pri}: {int(sc.get('width', 0))}x{int(sc.get('height', 0))} (Visible: {int(sc.get('visible_width', 0))}x{int(sc.get('visible_height', 0))})")
         return "\n".join(lines)
+
+    # ── Milestone 7.4 Document Intelligence Formatters ───────────────────────
+    if act == "inspect_document" and isinstance(data, dict):
+        if data.get("error"):
+            return f"Document error: {data['error']}"
+        tbl_cnt = len(data.get("tables") or [])
+        inj_str = "\n⚠️ Prompt Injection Alert: Neutralized suspicious instructions in document text." if data.get("has_prompt_injection") else ""
+        return (
+            f"Document Analysis: **{data.get('file_name')}** ({data.get('file_type')})\n"
+            f"  • Pages: {data.get('page_count')} page(s)\n"
+            f"  • Tables Detected: {tbl_cnt}\n"
+            f"  • Extracted Text Sample:\n\"{data.get('full_text', '')[:300].strip()}...\"{inj_str}"
+        )
+
+    if act == "summarize_document" and isinstance(data, dict):
+        return f"Summary for {data.get('file_path')}:\n{data.get('summary')}"
+
+    if act == "ask_document" and isinstance(data, dict):
+        return f"Q: {data.get('question')}\nA: {data.get('answer')}"
 
     return str(data)

@@ -45,7 +45,9 @@ logger = get_logger("MacOSDesktopContext")
 SENSITIVE_TITLE_PATTERNS = [
     re.compile(re.escape(PROTECTED_FOLDER_NAME), re.IGNORECASE),
     re.compile(r"(?i)\b(?:keychain|passwords?|credentials?|id_rsa|\.aws|\.gnupg)\b"),
-    re.compile(r"(?i)\b(?:messages|whatsapp|signal|telegram|photos\s+library)\b"),
+    re.compile(r"(?i)\b(?:messages?|whatsapp|signal|telegram|photos\s+library|instagram|messenger|discord|slack|mail|outlook|gmail)\b"),
+    re.compile(r"(?i)\b(?:chat|inbox|direct|conversation|dm)\b"),
+    re.compile(r"https?://[^\s]+"),
 ]
 
 

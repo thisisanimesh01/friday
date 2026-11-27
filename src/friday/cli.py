@@ -3,6 +3,7 @@
 import argparse
 import os
 import sys
+from pathlib import Path
 from typing import Sequence
 
 from friday import __version__
@@ -482,6 +483,44 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Run latency and process memory benchmark on Desktop Context Engine.",
     )
+    # ── Milestone 7.4: Visual Document Understanding Flags ───────────────────
+    parser.add_argument(
+        "--inspect-document",
+        type=str,
+        default=None,
+        help="Extract text, pages, tables, and metadata from an authorized PDF or document file.",
+    )
+    parser.add_argument(
+        "--summarize-doc",
+        type=str,
+        default=None,
+        help="Generate a grounded summary of an authorized document using Ollama qwen2.5:3b.",
+    )
+    parser.add_argument(
+        "--ask-doc",
+        type=str,
+        nargs=2,
+        metavar=("DOC_PATH", "QUESTION"),
+        default=None,
+        help="Ask a question grounded in an authorized document with page citations.",
+    )
+    parser.add_argument(
+        "--extract-table",
+        type=str,
+        default=None,
+        help="Extract structured tables from an authorized document (CSV, PDF, or text).",
+    )
+    parser.add_argument(
+        "--export-doc",
+        choices=["txt", "md", "json"],
+        default=None,
+        help="Export document analysis output format (saved in friday workspace/exports/).",
+    )
+    parser.add_argument(
+        "--benchmark-doc",
+        action="store_true",
+        help="Run performance, latency, and memory benchmark on Document Intelligence Engine.",
+    )
     parser.add_argument(
         "--voice",
         type=str,
@@ -920,7 +959,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         from friday.macos.registry import default_registry
         from friday.macos.router import format_action_result
 
-        langs = [l.strip() for l in args.ocr_languages.split(",") if l.strip()] if args.ocr_languages else None
+        langs = [lang.strip() for lang in args.ocr_languages.split(",") if lang.strip()] if args.ocr_languages else None
         res = default_registry.execute(
             name="extract_text",
             dry_run=args.dry_run,
@@ -937,6 +976,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.benchmark_ocr:
         import resource
         import time
+
         from friday.macos.ocr import create_synthetic_ground_truth_image, extract_text_from_image
 
         print("Running FRIDAY Apple Vision OCR Benchmark...")
@@ -998,7 +1038,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0 if res.success else 1
 
     if args.ask_desktop:
-        from friday.macos.desktop_context import answer_contextual_query_with_ollama, get_desktop_context
+        from friday.macos.desktop_context import (
+            answer_contextual_query_with_ollama,
+            get_desktop_context,
+        )
 
         ctx = get_desktop_context(filter_privacy=True, dry_run=args.dry_run)
         answer = answer_contextual_query_with_ollama(args.ask_desktop, ctx)
@@ -1008,6 +1051,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.benchmark_desktop_context:
         import resource
         import time
+
         from friday.macos.desktop_context import get_desktop_context
 
         print("Running FRIDAY Desktop Context Benchmark...")
@@ -1034,6 +1078,93 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"  Peak RSS:               {mem_after:.2f} MB")
         print(f"  Onscreen Windows:       {len(cold_ctx.visible_windows)}")
         print(f"  Screens Discovered:     {len(cold_ctx.screens)}")
+        return 0
+
+    # Milestone 7.4 Document Intelligence CLI Handlers
+    if args.inspect_document:
+        from friday.macos.document_intelligence import export_document_analysis, process_document
+
+        doc_res = process_document(
+            file_path=args.inspect_document,
+            dry_run=args.dry_run,
+            is_private_session=(os.environ.get("FRIDAY_MODE") == "private"),
+        )
+        if args.export_doc and not args.dry_run and os.environ.get("FRIDAY_MODE") != "private":
+            saved_p = export_document_analysis(doc_res, format_type=args.export_doc)
+            print(f"Export saved to {saved_p}")
+        from friday.macos.registry import ActionResult
+        from friday.macos.router import format_action_result
+        print(format_action_result(ActionResult(action_name="inspect_document", success=True, data=doc_res.to_dict())))
+        return 0
+
+    if args.summarize_doc:
+        from friday.macos.document_intelligence import summarize_document
+
+        summary = summarize_document(
+            file_path=args.summarize_doc,
+            dry_run=args.dry_run,
+            is_private_session=(os.environ.get("FRIDAY_MODE") == "private"),
+        )
+        print(f"\n[Document Summary - {Path(args.summarize_doc).name}]:\n{summary}")
+        return 0
+
+    if args.ask_doc:
+        from friday.macos.document_intelligence import answer_document_question
+
+        doc_p, question = args.ask_doc
+        ans = answer_document_question(
+            file_path=doc_p,
+            question=question,
+            dry_run=args.dry_run,
+            is_private_session=(os.environ.get("FRIDAY_MODE") == "private"),
+        )
+        print(f"\n[Document Intelligence Q&A]:\nQ: {question}\nA: {ans}")
+        return 0
+
+    if args.extract_table:
+        from friday.macos.document_intelligence import process_document
+
+        doc_res = process_document(file_path=args.extract_table, dry_run=args.dry_run)
+        print(f"\nExtracted Tables for {doc_res.file_name}:")
+        if doc_res.tables:
+            for tidx, tbl in enumerate(doc_res.tables, 1):
+                print(f"\nTable {tidx}:")
+                for row in tbl:
+                    print("  | " + " | ".join(row) + " |")
+        else:
+            print("  No tables detected.")
+        return 0
+
+    if args.benchmark_doc:
+        import resource
+        import time
+
+        from friday.macos.document_intelligence import create_synthetic_pdf, process_document
+
+        print("Running FRIDAY Document Intelligence Benchmark...")
+        mem_before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / (1024 * 1024)
+
+        sample_pdf = create_synthetic_pdf("Benchmark Test Content Line 1\nLine 2 Table Data | A | B |", "benchmark_doc.pdf", page_count=3)
+        t0 = time.perf_counter()
+        doc_res = process_document(sample_pdf)
+        cold_lat = time.perf_counter() - t0
+
+        warm_lats = []
+        for _ in range(3):
+            t_start = time.perf_counter()
+            process_document(sample_pdf)
+            warm_lats.append(time.perf_counter() - t_start)
+
+        mem_after = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / (1024 * 1024)
+        avg_warm = sum(warm_lats) / len(warm_lats)
+
+        print("\nDocument Intelligence Benchmark Results:")
+        print(f"  Pages Processed:        {doc_res.page_count}")
+        print(f"  Cold Extraction Latency: {cold_lat * 1000:.1f} ms ({cold_lat:.3f}s)")
+        print(f"  Warm Extraction (avg):   {avg_warm * 1000:.1f} ms ({avg_warm:.3f}s)")
+        print(f"  RAM Delta (Incremental): {max(0.0, mem_after - mem_before):.2f} MB")
+        print(f"  Peak RSS:               {mem_after:.2f} MB")
+        print(f"  Extraction Status:      {doc_res.status}")
         return 0
 
     # Milestone 6.3 CLI Handlers
@@ -1287,8 +1418,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0 if res.success else 1
 
     if args.create_workflow:
-        import json
-        from pathlib import Path
+
         from friday.macos.registry import default_registry
         from friday.macos.router import format_action_result
 

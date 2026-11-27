@@ -78,3 +78,7 @@ samples/
 *.npy
 *.pth
 *.index
+
+# Compiled native Swift helper binaries
+src/friday/macos/bin/friday_*
+!src/friday/macos/bin/*.swift
