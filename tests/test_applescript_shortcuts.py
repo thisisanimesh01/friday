@@ -186,12 +186,17 @@ def test_shortcuts_manager_approval_flow(tmp_path):
 
 
 def test_shortcuts_manager_default_known_shortcuts(tmp_path):
-    """Verify default known shortcuts are approved by default."""
+    """Verify default known shortcuts and security auditing behavior."""
     mgr = ShortcutsManager(approvals_file=tmp_path / "approvals.json")
-    for name in ["Charger Sound", "Quick Note", "Open Workspace"]:
+    # Charger Sound and Open Workspace have verified boundaries
+    for name in ["Charger Sound", "Open Workspace"]:
         st = mgr.get_shortcut_status(name)
         assert st["approved"] is True
         assert st["source"] == "allowlisted_default"
+
+    # Quick Note has unverified external boundary and must be disabled
+    qn = mgr.get_shortcut_status("Quick Note")
+    assert qn["approved"] is False
 
 
 def test_run_shortcut_blocks_unverified(tmp_path):
@@ -206,8 +211,8 @@ def test_run_shortcut_blocks_unverified(tmp_path):
 def test_run_shortcut_privacy_guard_rejection(tmp_path):
     """Verify input path pointing to 'me and she' is blocked."""
     mgr = ShortcutsManager(approvals_file=tmp_path / "approvals.json")
-    # Even if shortcut is approved, protected input must be rejected
-    res = mgr.run_shortcut("Quick Note", input_path=str(PROTECTED_FOLDER_PATH / "notes.txt"))
+    # Even if shortcut is approved (e.g. Charger Sound), protected input must be rejected
+    res = mgr.run_shortcut("Charger Sound", input_path=str(PROTECTED_FOLDER_PATH / "notes.txt"))
     assert "error" in res
     assert "Privacy violation" in res["error"]
 

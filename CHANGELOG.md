@@ -2,7 +2,21 @@
 
 All notable changes to **Friday** are documented in this file.
 
-## [Unreleased] - Phase 6, Milestone 6.3: AppleScript & Shortcuts Automation
+## [Unreleased] - Phase 6, Milestone 6.4: System Settings & Audio/Display Controls
+- **System Settings & Hardware Controls:** Implemented volume get/set/mute/unmute, audio input/output device discovery, display brightness management, dark/light appearance toggles, and Focus Mode/DND controls (`src/friday/macos/system_settings.py`).
+- **Comprehensive Hardware Monitoring:** Implemented real-time monitoring of CPU usage, RAM utilization, root disk space, battery charge/charging state, thermal warning state/throttling alerts, Wi-Fi status/SSID, and Bluetooth power state.
+- **System Health Report Generation:** Added `generate_system_health_report` creating structured Markdown audit summaries saved strictly into `~/Desktop/friday workspace/reports/`.
+- **Confirmation-Guarded Disruptive Controls:** Enforced explicit confirmation gates for `set_wifi_power`, `set_bluetooth_power`, `lock_screen`, and `system_sleep` (HIGH risk), and fresh action-specific confirmations for `system_restart` and `system_shutdown` (CRITICAL risk). Force restart/shutdown is strictly prohibited.
+- **Mandatory Security Corrections:**
+  - Permanently disabled the global `empty_trash` template to ensure files outside `~/Desktop/friday workspace/` are never deleted.
+  - Audited default shortcuts and disabled unverified external shortcuts (`Quick Note`).
+  - Disabled Apple Notes output templates to preserve dedicated workspace confinement.
+  - Established distinction between Python path validation and OS-level sandboxing, verified via synthetic fixtures.
+- **Intent Routing & CLI Controls:** Added 23 new regex intent patterns for English, Hindi, and Hinglish queries, and CLI flags (`--mute`, `--unmute`, `--brightness`, `--appearance`, `--list-audio-devices`, `--focus-mode`, `--system-metrics`, `--thermal-status`, `--wifi`, `--bluetooth`, `--lock-screen`, `--sleep`, `--restart`, `--shutdown`, `--health-report`).
+- **50-Scenario Validation Suite:** Implemented `scripts/milestone_6_4_validation.py` passing 50/50 test scenarios across hardware controls, monitoring, confirmation gates, and privacy regressions.
+- **Voice Preservation:** Maintained approved Hinata neural voice embedding (`hinata_voice.npy`) and 1.14x speed multiplier.
+
+## [Phase 6, Milestone 6.3] - AppleScript & Shortcuts Automation
 - **Allowlisted AppleScript Templates:** Implemented modular AppleScript templates framework (`src/friday/macos/applescript_automation.py`) with strict argument sanitization (`_sanitize_applescript_arg`) and schema enforcement. Never runs arbitrary LLM-generated code.
 - **Prohibited Token Security Gates:** Rejects scripts containing `do shell script`, `administrator privileges`, `sudo`, or `rm -rf` prior to compilation or execution.
 - **Process Group Timeout & Cleanup:** Implemented POSIX process group spawning (`os.setsid`) and clean group termination (`os.killpg`) preventing zombie or hanging child processes during automation timeouts.

@@ -50,22 +50,25 @@ class ShortcutDefinition:
     metadata_hash: str = ""
 
 
-# Default allowlisted / approved shortcuts known to be safe
+# SECURITY AUDIT NOTE (Milestone 6.4):
+# Shortcut verification cannot rely solely on the shortcut title or simple user declaration.
+# Any shortcut that operates on external unconfined locations (like Notes.app or unbounded external paths)
+# is disabled until static action analysis and strict boundary enforcement can be verified.
 DEFAULT_KNOWN_SHORTCUTS: dict[str, ShortcutDefinition] = {
     "Charger Sound": ShortcutDefinition(
         name="Charger Sound",
         description="Plays a system charger sound alert.",
         actions_summary="Audio feedback notification",
-        resource_boundary="Audio output only; no filesystem or network access",
+        resource_boundary="Audio output only; zero filesystem or network access",
         approved=True,
     ),
     "Quick Note": ShortcutDefinition(
         name="Quick Note",
-        description="Adds a quick note entry via Shortcuts.",
+        description="Adds a quick note entry via Shortcuts (DISABLED: unverified cloud/system sync boundary).",
         actions_summary="Apple Notes text append",
-        resource_boundary="Confined to Notes.app database",
+        resource_boundary="Unconfined external Notes database",
         allowed_inputs=["text"],
-        approved=True,
+        approved=False,  # DISABLED: Cannot verify containment within dedicated workspace
     ),
     "Open Workspace": ShortcutDefinition(
         name="Open Workspace",

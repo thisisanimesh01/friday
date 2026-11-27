@@ -35,9 +35,9 @@ ROUTING_PATTERNS = [
         "list_apps",
         lambda m, text: {},
     ),
-    # System appearance
+    # System appearance read query
     (
-        re.compile(r"(?i)\b(?:dark\s+mode|light\s+mode|system\s+appearance|is\s+it\s+dark\s+mode)\b"),
+        re.compile(r"(?i)\b(?:is\s+(?:macos\s+in\s+)?dark\s+mode|is\s+it\s+dark\s+mode|what\s+is\s+(?:the\s+)?appearance|current\s+appearance|system\s+appearance)\b"),
         "get_appearance",
         lambda m, text: {},
     ),
@@ -83,7 +83,7 @@ ROUTING_PATTERNS = [
     ),
     # Switch application (e.g., "switch to terminal", "focus notes", "terminal pe switch karo")
     (
-        re.compile(r"(?i)\b(?:switch\s+to|focus|bring\s+up)\s+([a-zA-Z0-9_\s]+?)(?:\s+app|\s+application)?$"),
+        re.compile(r"(?i)\b(?:switch\s+to|focus|bring\s+up)\s+(?!dark\s+mode|light\s+mode)([a-zA-Z0-9_\s]+?)(?:\s+app|\s+application)?$"),
         "switch_app",
         lambda m, text: {"app_name": m.group(1).strip()},
     ),
@@ -214,6 +214,134 @@ ROUTING_PATTERNS = [
         re.compile(r"(?i)\b(?:run\s+shortcut|execute\s+shortcut|shortcut\s+chalao)\s+([a-zA-Z0-9_\s]+?)$"),
         "run_shortcut",
         lambda m, text: {"shortcut_name": m.group(1).strip()},
+    ),
+    # ── Milestone 6.4 System Settings, Hardware & Monitoring Patterns ──────────
+    # Mute / Unmute
+    (
+        re.compile(r"(?i)\b(?:mute|awaaz\s+band\s+karo|shant\s+ho\s+jao)\b"),
+        "set_mute",
+        lambda m, text: {"mute": True},
+    ),
+    (
+        re.compile(r"(?i)\b(?:unmute|awaaz\s+chalu\s+karo)\b"),
+        "set_mute",
+        lambda m, text: {"mute": False},
+    ),
+    # Brightness get / set (e.g., "brightness 80", "set brightness to 60", "brightness kitni hai")
+    (
+        re.compile(r"(?i)\b(?:set\s+brightness\s+(?:to\s+)?|brightness\s+)(\d{1,3})\b"),
+        "set_brightness",
+        lambda m, text: {"level": int(m.group(1))},
+    ),
+    (
+        re.compile(r"(?i)\b(?:get\s+brightness|current\s+brightness|brightness\s+check|brightness\s+kitni\s+hai)\b"),
+        "get_brightness",
+        lambda m, text: {},
+    ),
+    # Appearance dark / light / toggle
+    (
+        re.compile(r"(?i)\b(?:switch\s+to\s+dark\s+mode|enable\s+dark\s+mode|dark\s+mode\s+on|dark\s+mode\s+karo)\b"),
+        "set_appearance",
+        lambda m, text: {"dark_mode": True},
+    ),
+    (
+        re.compile(r"(?i)\b(?:switch\s+to\s+light\s+mode|enable\s+light\s+mode|light\s+mode\s+on|light\s+mode\s+karo)\b"),
+        "set_appearance",
+        lambda m, text: {"dark_mode": False},
+    ),
+    (
+        re.compile(r"(?i)\b(?:toggle\s+appearance|toggle\s+dark\s+mode|theme\s+badlo)\b"),
+        "toggle_appearance",
+        lambda m, text: {},
+    ),
+    # Audio Devices
+    (
+        re.compile(r"(?i)\b(?:list\s+audio\s+devices|audio\s+devices|speakers\s+and\s+mics)\b"),
+        "get_audio_devices",
+        lambda m, text: {},
+    ),
+    # Focus Mode / Do Not Disturb
+    (
+        re.compile(r"(?i)\b(?:focus\s+mode|do\s+not\s+disturb|dnd\s+status)\b"),
+        "get_focus_mode",
+        lambda m, text: {},
+    ),
+    (
+        re.compile(r"(?i)\b(?:toggle\s+focus\s+mode|toggle\s+dnd|dnd\s+on|dnd\s+off)\b"),
+        "toggle_focus_mode",
+        lambda m, text: {},
+    ),
+    # System Monitoring: CPU, RAM, Hardware metrics
+    (
+        re.compile(r"(?i)\b(?:cpu\s+usage|ram\s+usage|memory\s+usage|system\s+metrics|hardware\s+metrics)\b"),
+        "get_hardware_metrics",
+        lambda m, text: {},
+    ),
+    # Thermal status
+    (
+        re.compile(r"(?i)\b(?:thermal\s+status|temperature|is\s+mac\s+hot|throttling)\b"),
+        "get_thermal",
+        lambda m, text: {},
+    ),
+    # Wi-Fi & Bluetooth status
+    (
+        re.compile(r"(?i)\b(?:wifi\s+status|check\s+wifi|is\s+wifi\s+on|wifi\s+connected)\b"),
+        "get_wifi",
+        lambda m, text: {},
+    ),
+    (
+        re.compile(r"(?i)\b(?:bluetooth\s+status|check\s+bluetooth|is\s+bluetooth\s+on)\b"),
+        "get_bluetooth",
+        lambda m, text: {},
+    ),
+    # Wi-Fi control (e.g. "turn on wifi", "disable wifi", "wifi band karo")
+    (
+        re.compile(r"(?i)\b(?:turn\s+on\s+wifi|enable\s+wifi|wifi\s+chalu\s+karo)\b"),
+        "set_wifi_power",
+        lambda m, text: {"enabled": True},
+    ),
+    (
+        re.compile(r"(?i)\b(?:turn\s+off\s+wifi|disable\s+wifi|wifi\s+band\s+karo)\b"),
+        "set_wifi_power",
+        lambda m, text: {"enabled": False},
+    ),
+    # Bluetooth control (e.g. "turn on bluetooth", "turn off bluetooth")
+    (
+        re.compile(r"(?i)\b(?:turn\s+on\s+bluetooth|enable\s+bluetooth|bluetooth\s+chalu\s+karo)\b"),
+        "set_bluetooth_power",
+        lambda m, text: {"enabled": True},
+    ),
+    (
+        re.compile(r"(?i)\b(?:turn\s+off\s+bluetooth|disable\s+bluetooth|bluetooth\s+band\s+karo)\b"),
+        "set_bluetooth_power",
+        lambda m, text: {"enabled": False},
+    ),
+    # Screen Lock, Sleep, Restart, Shutdown
+    (
+        re.compile(r"(?i)\b(?:lock\s+screen|lock\s+display|screen\s+lock\s+karo)\b"),
+        "lock_screen",
+        lambda m, text: {},
+    ),
+    (
+        re.compile(r"(?i)\b(?:sleep\s+system|put\s+to\s+sleep|sleep\s+mac|so\s+jao)\b"),
+        "system_sleep",
+        lambda m, text: {},
+    ),
+    (
+        re.compile(r"(?i)\b(?:restart\s+system|reboot\s+mac|restart\s+mac|restart\s+karo)\b"),
+        "system_restart",
+        lambda m, text: {},
+    ),
+    (
+        re.compile(r"(?i)\b(?:shut\s+down|power\s+off|turn\s+off\s+mac|system\s+band\s+karo)\b"),
+        "system_shutdown",
+        lambda m, text: {},
+    ),
+    # System Health Report
+    (
+        re.compile(r"(?i)\b(?:system\s+health\s+report|generate\s+report|health\s+report|system\s+summary\s+report)\b"),
+        "generate_health_report",
+        lambda m, text: {},
     ),
 ]
 
@@ -359,5 +487,75 @@ def format_action_result(action_result: ActionResult) -> str:
             appr = "✓ Approved" if s.get("approved") else "✗ Unverified"
             lines.append(f"• {s['name']} [{appr}] - {s.get('actions_summary', 'No summary')}")
         return "macOS Shortcuts:\n" + "\n".join(lines)
+
+    # ── Milestone 6.4 Formatters ─────────────────────────────────────────────
+    if act in ("set_mute", "toggle_mute") and isinstance(data, dict):
+        if "error" in data:
+            return f"Audio mute error: {data['error']}"
+        state = "Muted" if data.get("muted") else "Unmuted"
+        return f"Audio output is now {state}."
+
+    if act == "get_audio_devices" and isinstance(data, dict):
+        devs = data.get("devices", [])
+        lines = [f"• {d['name']} ({d['type']}){' [Default]' if d.get('default_output') or d.get('default_input') else ''}" for d in devs]
+        return f"Audio Devices ({len(devs)} found):\n" + "\n".join(lines)
+
+    if act == "set_audio_device" and isinstance(data, dict):
+        if "error" in data:
+            return f"Audio device error: {data['error']}"
+        if data.get("status") == "unsupported":
+            return data.get("message", "Switching device unsupported.")
+        return f"Switched audio {data.get('type')} to '{data.get('device')}'."
+
+    if act in ("get_brightness", "set_brightness") and isinstance(data, dict):
+        if "error" in data:
+            return f"Brightness error: {data['error']}"
+        if data.get("status") == "unsupported":
+            return f"Brightness notice: {data.get('message')}"
+        return f"Display brightness is set to {data.get('brightness')}%."
+
+    if act in ("set_appearance", "toggle_appearance") and isinstance(data, dict):
+        if "error" in data:
+            return f"Appearance error: {data['error']}"
+        return f"macOS system appearance set to {data.get('appearance')} Mode."
+
+    if act in ("get_focus_mode", "toggle_focus_mode") and isinstance(data, dict):
+        return f"Focus mode: {data.get('message', data.get('focus_mode', 'Normal'))}."
+
+    if act == "get_thermal" and isinstance(data, dict):
+        throttled = " (Throttling active)" if data.get("throttling") else ""
+        return f"Thermal state: {data.get('thermal_state')}{throttled}. {data.get('details')}"
+
+    if act == "get_hardware_metrics" and isinstance(data, dict):
+        return (
+            f"Hardware Metrics: CPU: {data.get('cpu_percent')}% | "
+            f"RAM: {data.get('ram_used_gb')}/{data.get('ram_total_gb')} GB ({data.get('ram_percent')}%) | "
+            f"Disk: {data.get('disk_free_gb')} GB free ({data.get('disk_percent')}% used)."
+        )
+
+    if act == "get_wifi" and isinstance(data, dict):
+        return f"Wi-Fi is {data.get('power')} (Connected SSID: {data.get('ssid', 'N/A')})."
+
+    if act == "get_bluetooth" and isinstance(data, dict):
+        return f"Bluetooth power is {data.get('power')}."
+
+    if act in ("set_wifi_power", "set_bluetooth_power") and isinstance(data, dict):
+        if "error" in data:
+            return f"Connectivity error: {data['error']}"
+        status_prefix = "[Simulated] " if data.get("status") == "simulated" else ""
+        pwr = data.get("wifi_power") or data.get("bluetooth_power")
+        target = "Wi-Fi" if "wifi_power" in data else "Bluetooth"
+        return f"{status_prefix}{target} power set to {pwr}."
+
+    if act in ("lock_screen", "system_sleep", "system_restart", "system_shutdown") and isinstance(data, dict):
+        if "error" in data:
+            return f"Power control error: {data['error']}"
+        status_prefix = "[Simulated] " if data.get("status") == "simulated" else ""
+        return f"{status_prefix}{data.get('message', 'Action completed.')}"
+
+    if act == "generate_health_report" and isinstance(data, dict):
+        if "error" in data:
+            return f"Health report error: {data['error']}"
+        return f"System health report generated: {data.get('file_path')} (Saved in friday workspace/reports/)."
 
     return str(data)

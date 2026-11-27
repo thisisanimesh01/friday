@@ -114,17 +114,15 @@ def _build_display_notification(title: str = "FRIDAY", message: str = "", sound:
 
 
 # Template 2: Create a quick note in Apple Notes
+# SECURITY AUDIT NOTE (Milestone 6.4):
+# Direct Apple Notes creation is DISABLED by default because Notes.app synchronizes with
+# iCloud/system stores outside the dedicated workspace boundary (~/Desktop/friday workspace/).
+# All document/note outputs must be created strictly within the workspace directory.
 def _build_create_apple_note(title: str, body: str = "") -> str:
-    s_title = _sanitize_applescript_arg(title)
-    s_body = _sanitize_applescript_arg(body)
-    return f'''
-    tell application "Notes"
-        activate
-        tell default account
-            make new note at folder "Notes" with properties {{name:"{s_title}", body:"{s_body}"}}
-        end tell
-    end tell
-    '''
+    raise PermissionError(
+        "Apple Notes automation is disabled: external note creation cannot satisfy dedicated "
+        "workspace confinement requirements. Save documents directly to ~/Desktop/friday workspace/documents/ instead."
+    )
 
 
 # Template 3: Toggle music playback (Music.app)
@@ -142,9 +140,15 @@ def _build_set_volume(level: int) -> str:
     return f"set volume output volume {lvl}"
 
 
-# Template 5: Empty macOS Trash (Destructive: requires confirmation)
+# Template 5: Empty macOS Trash
+# SECURITY AUDIT NOTE (Milestone 6.4):
+# Global empty_trash is PERMANENTLY DISABLED. FRIDAY must never delete files or purge system
+# directories outside the authorized workspace (~/Desktop/friday workspace/).
 def _build_empty_trash() -> str:
-    return 'tell application "Finder" to empty trash'
+    raise PermissionError(
+        "Security Restriction: empty_trash is permanently disabled. "
+        "FRIDAY cannot delete files or directories outside ~/Desktop/friday workspace/."
+    )
 
 
 # Template 6: Get currently playing track in Music.app
@@ -177,7 +181,7 @@ APPLESCRIPT_TEMPLATES: dict[str, AppleScriptTemplate] = {
     ),
     "create_note": AppleScriptTemplate(
         name="create_note",
-        description="Create a new note in Apple Notes.",
+        description="Create a note (DISABLED: cannot satisfy workspace confinement).",
         builder=_build_create_apple_note,
         param_schema={"title": str, "body": str},
         timeout_s=5.0,
@@ -203,7 +207,7 @@ APPLESCRIPT_TEMPLATES: dict[str, AppleScriptTemplate] = {
     ),
     "empty_trash": AppleScriptTemplate(
         name="empty_trash",
-        description="Empty macOS system Trash (destructive).",
+        description="Empty macOS system Trash (PERMANENTLY DISABLED).",
         builder=_build_empty_trash,
         timeout_s=5.0,
         requires_confirmation=True,
