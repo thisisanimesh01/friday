@@ -455,6 +455,33 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Run comprehensive benchmark on Apple Vision OCR (latency, RSS memory overhead, character accuracy).",
     )
+    # ── Milestone 7.3: Active Window Awareness & Desktop Context ─────────────
+    parser.add_argument(
+        "--desktop-context",
+        action="store_true",
+        help="Display comprehensive metadata-only desktop context without capturing screen pixels.",
+    )
+    parser.add_argument(
+        "--active-window",
+        action="store_true",
+        help="Query frontmost application and active window geometry and title.",
+    )
+    parser.add_argument(
+        "--display-layout",
+        action="store_true",
+        help="Query connected monitors, resolutions, and display bounds.",
+    )
+    parser.add_argument(
+        "--ask-desktop",
+        type=str,
+        default=None,
+        help="Ask contextual question about your desktop using Ollama qwen2.5:3b (metadata-only).",
+    )
+    parser.add_argument(
+        "--benchmark-desktop-context",
+        action="store_true",
+        help="Run latency and process memory benchmark on Desktop Context Engine.",
+    )
     parser.add_argument(
         "--voice",
         type=str,
@@ -943,6 +970,70 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"  Peak RSS:               {mem_after:.2f} MB")
         print(f"  Accuracy (Exact Match): {'100%' if exact_match else 'Mismatch'}")
         print(f"  Extracted Sample:       \"{res_cold.text.strip()}\"")
+        return 0
+
+    # Milestone 7.3 Desktop Context CLI Handlers
+    if args.active_window:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        res = default_registry.execute(name="get_active_window_context", dry_run=args.dry_run)
+        print(format_action_result(res))
+        return 0 if res.success else 1
+
+    if args.display_layout:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        res = default_registry.execute(name="get_display_layout", dry_run=args.dry_run)
+        print(format_action_result(res))
+        return 0 if res.success else 1
+
+    if args.desktop_context:
+        from friday.macos.registry import default_registry
+        from friday.macos.router import format_action_result
+
+        res = default_registry.execute(name="get_desktop_context", dry_run=args.dry_run)
+        print(format_action_result(res))
+        return 0 if res.success else 1
+
+    if args.ask_desktop:
+        from friday.macos.desktop_context import answer_contextual_query_with_ollama, get_desktop_context
+
+        ctx = get_desktop_context(filter_privacy=True, dry_run=args.dry_run)
+        answer = answer_contextual_query_with_ollama(args.ask_desktop, ctx)
+        print(f"\n[Desktop Intelligence Response]:\n{answer}")
+        return 0
+
+    if args.benchmark_desktop_context:
+        import resource
+        import time
+        from friday.macos.desktop_context import get_desktop_context
+
+        print("Running FRIDAY Desktop Context Benchmark...")
+        mem_before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / (1024 * 1024)
+
+        t0 = time.perf_counter()
+        cold_ctx = get_desktop_context(filter_privacy=True)
+        cold_lat = time.perf_counter() - t0
+
+        warm_lats = []
+        for _ in range(5):
+            t_start = time.perf_counter()
+            get_desktop_context(filter_privacy=True)
+            warm_lats.append(time.perf_counter() - t_start)
+
+        mem_after = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / (1024 * 1024)
+        avg_warm = sum(warm_lats) / len(warm_lats)
+
+        print("\nDesktop Context Benchmark Results:")
+        print(f"  Frontmost App:          {cold_ctx.frontmost_app_name}")
+        print(f"  Cold Retrieval Latency: {cold_lat * 1000:.1f} ms ({cold_lat:.3f}s)")
+        print(f"  Warm Retrieval (avg):   {avg_warm * 1000:.1f} ms ({avg_warm:.3f}s)")
+        print(f"  RAM Delta (Incremental): {max(0.0, mem_after - mem_before):.2f} MB")
+        print(f"  Peak RSS:               {mem_after:.2f} MB")
+        print(f"  Onscreen Windows:       {len(cold_ctx.visible_windows)}")
+        print(f"  Screens Discovered:     {len(cold_ctx.screens)}")
         return 0
 
     # Milestone 6.3 CLI Handlers

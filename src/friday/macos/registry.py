@@ -1089,6 +1089,68 @@ def create_default_registry() -> ActionRegistry:
         )
     )
 
+    # 36. Milestone 7.3: Active Window Awareness & Desktop Context
+    def _get_desktop_context_handler(
+        filter_privacy: bool = True,
+        is_private_session: bool = False,
+    ) -> dict[str, Any]:
+        from friday.macos.desktop_context import get_desktop_context
+
+        res = get_desktop_context(
+            filter_privacy=filter_privacy,
+            is_private_session=is_private_session,
+        )
+        return res.to_dict()
+
+    def _get_active_window_context_handler() -> dict[str, Any]:
+        from friday.macos.desktop_context import get_desktop_context
+
+        res = get_desktop_context(filter_privacy=True)
+        return {
+            "status": res.status,
+            "frontmost_app_name": res.frontmost_app_name,
+            "frontmost_bundle_id": res.frontmost_bundle_id,
+            "active_window_title": res.active_window_title,
+            "active_window_bounds": res.active_window_bounds,
+            "active_window_display": res.active_window_display,
+            "is_fullscreen": res.is_fullscreen,
+        }
+
+    def _get_display_layout_handler() -> dict[str, Any]:
+        from friday.macos.desktop_context import get_desktop_context
+
+        res = get_desktop_context(filter_privacy=True)
+        return {
+            "status": res.status,
+            "screen_count": len(res.screens),
+            "screens": [s.to_dict() for s in res.screens],
+        }
+
+    reg.register(
+        ActionDefinition(
+            name="get_desktop_context",
+            description="Get structured desktop context including frontmost app, active window, screens and layout.",
+            risk=RiskTier.READ_ONLY,
+            handler=_get_desktop_context_handler,
+        )
+    )
+    reg.register(
+        ActionDefinition(
+            name="get_active_window_context",
+            description="Get active application and front window metadata without screen capture.",
+            risk=RiskTier.READ_ONLY,
+            handler=_get_active_window_context_handler,
+        )
+    )
+    reg.register(
+        ActionDefinition(
+            name="get_display_layout",
+            description="Get display configuration and screen coordinates.",
+            risk=RiskTier.READ_ONLY,
+            handler=_get_display_layout_handler,
+        )
+    )
+
     return reg
 
 
