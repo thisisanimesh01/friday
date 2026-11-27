@@ -345,6 +345,7 @@ def validate_ocr_input_path(target_path: str | Path) -> Path:
 def execute_vision_ocr(
     image_path: Path,
     languages: list[str] | None = None,
+    recognition_mode: str = "general",
     timeout_seconds: float = 30.0,
 ) -> dict[str, Any]:
     """Execute Apple Vision OCR using the native compiled helper."""
@@ -355,6 +356,12 @@ def execute_vision_ocr(
     args = [str(bin_path), str(image_path)]
     if languages:
         args.append(",".join(languages))
+    else:
+        args.append("")
+
+    # Pass recognition mode (e.g. 'code', 'general') to configure language correction
+    if recognition_mode:
+        args.append(recognition_mode)
 
     start_time = time.perf_counter()
     proc = subprocess.run(
@@ -499,6 +506,7 @@ def extract_text_from_image(
     image_path: str | Path,
     languages: list[str] | None = None,
     preferred_engine: str = "auto",
+    recognition_mode: str = "general",
     export_format: str | None = None,
     dry_run: bool = False,
     is_private_session: bool = False,
@@ -509,6 +517,7 @@ def extract_text_from_image(
         image_path: Path to image inside authorized workspace.
         languages: List of language codes (e.g. ['en-US'], ['hi-IN'], ['en-US', 'hi-IN']).
         preferred_engine: 'auto', 'apple_vision', or 'tesseract'.
+        recognition_mode: 'general' or 'code' (disables language correction for code/operators).
         export_format: None, 'txt', or 'json'.
         dry_run: If True, validate image parameters and preview without running full inference.
         is_private_session: If True, suppress disk exports, persistence, and audit logging.
@@ -556,7 +565,11 @@ def extract_text_from_image(
 
     if chosen_engine in {"auto", "apple_vision"}:
         try:
-            raw_output = execute_vision_ocr(valid_path, languages=languages)
+            raw_output = execute_vision_ocr(
+                valid_path,
+                languages=languages,
+                recognition_mode=recognition_mode,
+            )
         except Exception as vision_err:
             logger.warning(f"Vision OCR failed: {vision_err}. Checking Tesseract fallback...")
             if chosen_engine == "apple_vision":

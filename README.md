@@ -146,7 +146,8 @@ python3 -m compileall -q .
 * **Phase 7 — Vision & Screen Awareness:**
   - **Milestone 7.1:** Screen Capture Foundation & Permission Hardening — **Completed**.
   - **Milestone 7.2:** Local OCR & Text Extraction Engine — **Completed**.
-  - **Milestone 7.3:** Active Window Awareness & Desktop Context.
+  - **Milestone 7.3:** Active Window Awareness & Desktop Context — **Completed**.
+  - **Milestone 7.4:** Visual Document Understanding.
   - **Milestone 7.4:** Visual Document Understanding.
   - **Milestone 7.5:** Vision Privacy, Redaction & Real-World Validation.
 * **Phase 8 — Online Intelligence & Plugins:** Internet tool improvements, web research, browser automation, productivity plugins.

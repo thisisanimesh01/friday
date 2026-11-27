@@ -2,7 +2,22 @@
 
 All notable changes to **Friday** are documented in this file.
 
-## [Unreleased] - Phase 7, Milestone 7.2: Local OCR & Text Extraction Engine
+## [Unreleased] - Phase 7, Milestone 7.3: Active Window Awareness & Desktop Context
+- **Desktop Context Engine:** Implemented modular desktop context engine (`src/friday/macos/desktop_context.py` & `src/friday/macos/bin/friday_desktop_context.swift`) discovering frontmost application, bundle identifier, active window geometry, layer, and state using NSWorkspace, Quartz Window Server, and CGWindowList.
+- **Zero-Pixel Metadata Invariant:** Strictly enforced metadata retrieval without pixel acquisition or screen recording privileges.
+- **PrivacyGuard Title Scrubbing:** Masked sensitive window titles, document names, and paths referencing the permanently protected directory (`me and she`) or sensitive repositories (`Keychain`, `Messages`, `Photos Library`).
+- **Contextual Intelligence with Ollama qwen2.5:3b:** Added situational reasoning answering user inquiries (*"Which application am I using?"*, *"What window is active?"*, *"Screen par kya khula hai?"*) while refusing to hallucinate document contents from titles alone.
+- **Intent Classification (Metadata vs Visual):** Structured intent routing distinguishing metadata queries from visual/OCR queries requiring separate single-use capture authorization.
+- **ActionRegistry, CLI & Intent Routing:** Registered `get_desktop_context`, `get_active_window_context`, and `get_display_layout`. Added CLI flags (`--desktop-context`, `--active-window`, `--display-layout`, `--ask-desktop`, `--benchmark-desktop-context`) with English and Hinglish intents.
+- **Milestone 7.2 OCR Engine Audit & Corrections:**
+  - Audited combined process tree RSS memory (Python + Swift helper: 12.67 MB).
+  - Accurately reported installed Tesseract languages (`eng`, `osd`, `snum`) and confirmed Hindi fallback is unsupported in Tesseract (native Vision supported).
+  - Added `recognition_mode="code"` disabling language correction to improve operator, bracket, and identifier recognition in code snippets.
+- **Validation Suite:** Created `scripts/milestone_7_3_validation.py` executing 60 automated validation scenarios with 100% pass rate.
+- **Full Pytest Regression Suite:** Preserved all 188 existing tests and added 7 new tests in `tests/test_desktop_context.py` for a total of 195 passing tests.
+- **Voice Preservation:** Maintained approved Hinata neural voice embedding (`hinata_voice.npy`) at 1.14x speed multiplier.
+
+## [Phase 7, Milestone 7.2] - Local OCR & Text Extraction Engine
 - **Modular Local OCR Engine:** Implemented offline OCR engine (`src/friday/macos/ocr.py`) with native Apple Vision Framework (`VNRecognizeTextRequest`) compiled via Swift helper as primary backend, with lightweight Tesseract CLI (`/opt/homebrew/bin/tesseract`) fallback.
 - **Runtime Language & Revision Inspection:** Added dynamic recognition language inspection discovering 33 supported Apple Vision languages (including English `en-US` and Hindi `hi-IN`), supported API revisions (Revisions 1, 2, 3), and Tesseract language lists.
 - **Multilingual Support & Accuracy:** Validated character accuracy across English, Hindi (Devanagari script), mixed Hinglish, code snippets, and numeric strings with 0.0% CER on standard ground-truth images.

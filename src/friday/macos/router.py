@@ -447,6 +447,32 @@ ROUTING_PATTERNS = [
         "get_ocr_engine_status",
         lambda m, text: {},
     ),
+    # ── Milestone 7.3: Active Window & Desktop Context Intents ──────────────
+    (
+        re.compile(r"(?i)\b(?:which\s+app(?:lication)?(?:\s+am\s+i\s+using)?|what\s+app\s+is\s+this|kaunsa\s+app\s+hai)\b"),
+        "get_active_window_context",
+        lambda m, text: {},
+    ),
+    (
+        re.compile(r"(?i)\b(?:what\s+window\s+is\s+currently\s+active|active\s+window|current\s+window|active\s+window\s+kya\s+hai)\b"),
+        "get_active_window_context",
+        lambda m, text: {},
+    ),
+    (
+        re.compile(r"(?i)\b(?:which\s+monitor\s+am\s+i\s+using|which\s+monitor|which\s+display|display\s+layout|screen\s+layout)\b"),
+        "get_display_layout",
+        lambda m, text: {},
+    ),
+    (
+        re.compile(r"(?i)\b(?:how\s+are\s+my\s+windows\s+arranged|window\s+layout|desktop\s+context|what\s+am\s+i\s+working\s+on|screen\s+par\s+kya\s+khula\s+hai)\b"),
+        "get_desktop_context",
+        lambda m, text: {},
+    ),
+    (
+        re.compile(r"(?i)\b(?:current\s+window\s+ka\s+size|active\s+window\s+size|window\s+size\s+batao)\b"),
+        "get_active_window_context",
+        lambda m, text: {},
+    ),
 ]
 
 
@@ -744,5 +770,39 @@ def format_action_result(action_result: ActionResult) -> str:
             f"  • English Supported: {data.get('english_supported')}\n"
             f"  • Offline Confinement: {data.get('offline_only')}"
         )
+
+    # ── Milestone 7.3 Desktop Context Formatters ─────────────────────────────
+    if act == "get_active_window_context" and isinstance(data, dict):
+        b = data.get("active_window_bounds", {})
+        b_str = f"{int(b.get('width', 0))}x{int(b.get('height', 0))} at ({int(b.get('x', 0))}, {int(b.get('y', 0))})"
+        fs_str = " [Fullscreen]" if data.get("is_fullscreen") else ""
+        return (
+            f"Active Application: **{data.get('frontmost_app_name')}** ({data.get('frontmost_bundle_id')})\n"
+            f"Active Window: *'{data.get('active_window_title') or 'Untitled'}'*{fs_str}\n"
+            f"Window Bounds: {b_str} (Display {data.get('active_window_display', 0)})"
+        )
+
+    if act == "get_desktop_context" and isinstance(data, dict):
+        wins = data.get("visible_windows", [])
+        w_lines = []
+        for w in wins[:5]:
+            w_lines.append(f"  • {w.get('owner_name')}: '{w.get('title')}' ({int(w.get('width', 0))}x{int(w.get('height', 0))})")
+        wins_formatted = "\n".join(w_lines) if w_lines else "  • No visible windows detected"
+        sc_cnt = len(data.get("screens", []))
+        return (
+            f"Desktop Context Summary:\n"
+            f"  • Frontmost: {data.get('frontmost_app_name')} (PID {data.get('frontmost_pid')})\n"
+            f"  • Active Window: '{data.get('active_window_title')}'\n"
+            f"  • Displays: {sc_cnt} active screen(s)\n"
+            f"Visible Windows ({len(wins)} total):\n{wins_formatted}"
+        )
+
+    if act == "get_display_layout" and isinstance(data, dict):
+        sc_list = data.get("screens", [])
+        lines = [f"Display Configuration ({data.get('screen_count', 0)} display(s)):"]
+        for sc in sc_list:
+            pri = " [Primary]" if sc.get("is_primary") else ""
+            lines.append(f"  • Display {sc.get('index')}{pri}: {int(sc.get('width', 0))}x{int(sc.get('height', 0))} (Visible: {int(sc.get('visible_width', 0))}x{int(sc.get('visible_height', 0))})")
+        return "\n".join(lines)
 
     return str(data)

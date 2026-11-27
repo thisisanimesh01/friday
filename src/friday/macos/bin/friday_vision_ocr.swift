@@ -112,7 +112,15 @@ let request = VNRecognizeTextRequest { req, error in
 }
 
 request.recognitionLevel = .accurate
-request.usesLanguageCorrection = true
+// Natural language correction should be disabled for code/identifiers/punctuation accuracy
+var languageCorrection = true
+if CommandLine.arguments.count > 3 {
+    let modeArg = CommandLine.arguments[3].lowercased()
+    if modeArg == "code" || modeArg == "raw" || modeArg == "false" {
+        languageCorrection = false
+    }
+}
+request.usesLanguageCorrection = languageCorrection
 
 if CommandLine.arguments.count > 2 && !CommandLine.arguments[2].isEmpty {
     let customLangs = CommandLine.arguments[2]
