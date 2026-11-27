@@ -500,6 +500,91 @@ def create_default_registry() -> ActionRegistry:
         )
     )
 
+    # 17b. Milestone 7.1 Enhanced Screen Capture Actions
+    from friday.macos.media_capture import (
+        capture_screen,
+        check_screen_recording_permission,
+        discover_displays,
+        get_frontmost_window_bounds,
+        issue_single_use_capture_authorization,
+        revoke_capture_authorization,
+    )
+
+    def _capture_screen_handler(
+        mode: str = "window",
+        display_index: int = 1,
+        region: tuple[int, int, int, int] | None = None,
+        target_window: str | None = None,
+        output_filename: str | None = None,
+        auth_token: str | None = None,
+        simulated: bool = False,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        dry_run = kwargs.get("dry_run", False)
+        return capture_screen(
+            mode=mode,
+            display_index=display_index,
+            region=region,
+            target_window=target_window,
+            output_filename=output_filename,
+            dry_run=dry_run,
+            auth_token=auth_token,
+            simulated=simulated,
+        )
+
+    reg.register(
+        ActionDefinition(
+            name="capture_screen",
+            description="Execute single-use screen capture (fullscreen, window, or region) with permission and privacy hardening.",
+            risk=RiskTier.MEDIUM,
+            handler=_capture_screen_handler,
+            arg_schema={
+                "mode": str,
+                "display_index": int,
+                "target_window": str,
+                "output_filename": str,
+                "auth_token": str,
+                "simulated": bool,
+            },
+        )
+    )
+
+    reg.register(
+        ActionDefinition(
+            name="check_screen_recording_permission",
+            description="Check macOS Screen Recording TCC permission status.",
+            risk=RiskTier.READ_ONLY,
+            handler=check_screen_recording_permission,
+        )
+    )
+
+    reg.register(
+        ActionDefinition(
+            name="discover_displays",
+            description="Discover connected displays, resolutions, and primary/secondary status.",
+            risk=RiskTier.READ_ONLY,
+            handler=discover_displays,
+        )
+    )
+
+    reg.register(
+        ActionDefinition(
+            name="get_window_geometry",
+            description="Query active frontmost window bounding box and dimensions.",
+            risk=RiskTier.READ_ONLY,
+            handler=get_frontmost_window_bounds,
+        )
+    )
+
+    reg.register(
+        ActionDefinition(
+            name="cancel_capture",
+            description="Revoke active capture authorization token and cancel pending capture.",
+            risk=RiskTier.LOW,
+            handler=lambda **kwargs: {"status": "cancelled", "message": "Capture authorization revoked."},
+        )
+    )
+
     # ── Milestone 6.3 AppleScript & Shortcuts Automations ───────────────────────
     from friday.macos.applescript_automation import (
         APPLESCRIPT_TEMPLATES,

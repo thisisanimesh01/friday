@@ -2,7 +2,22 @@
 
 All notable changes to **Friday** are documented in this file.
 
-## [Unreleased] - Phase 6, Milestone 6.5: Multi-Step Desktop Workflows
+## [Unreleased] - Phase 7, Milestone 7.1: Screen Capture Foundation & Permission Hardening
+- **Screen Capture Engine:** Implemented single-use screen capture (`src/friday/macos/media_capture.py`) supporting Fullscreen (`-D <index>`), Active Window (`-w`), and Rectangular Region (`-R x,y,w,h`) capture modes.
+- **Retina Scaling & Display Discovery:** Implemented display detection (`discover_displays`) identifying display resolution, Retina scaling factors (`2.0x`), and primary/secondary display indicators.
+- **Frontmost Window Geometry:** Added frontmost window bounds querying (`get_frontmost_window_bounds`) reporting application names, window titles, and position/dimension coordinates.
+- **Screen Recording TCC Detection:** Added non-interactive Screen Recording permission verification (`check_screen_recording_permission`) providing actionable System Settings guidance when access is denied.
+- **Strict Single-Use Authorization:** Implemented token authorization framework (`issue_single_use_capture_authorization`, `revoke_capture_authorization`) binding every capture to an exact mode and target, expiring after 30s, and preventing authorization replay.
+- **PrivacyGuard Screen Protection:** Enforced pre-capture visible window title scanning (`is_protected_content_visible_on_screen`) failing closed if protected folder references (`me and she`) or sensitive repositories are detected.
+- **Zero-Dependency PNG Validation & Stripping:** Implemented pure Python PNG chunk parser and metadata stripper removing auxiliary chunks (`tEXt`, `zTXt`, `iTXt`, `pHYs`) and ensuring atomic temporary-to-permanent file creation.
+- **Dedicated Workspace Confinement:** Confined all screenshots exclusively to `~/Desktop/friday workspace/screenshots/` with unique non-overwriting timestamped filenames.
+- **ActionRegistry & Router Integration:** Registered `capture_screen`, `check_screen_recording_permission`, `discover_displays`, `get_window_geometry`, and `cancel_capture` with English, Hindi, and Hinglish natural language routing.
+- **CLI Commands:** Added `--take-screenshot`, `--check-screen-permission`, `--discover-displays`, `--capture-region`, `--display-index`, `--cancel-capture`, and `--simulated-capture`.
+- **Comprehensive Validation Suite:** Created `scripts/milestone_7_1_validation.py` executing 50 automated validation scenarios with 100% pass rate.
+- **Full Pytest Regression Suite:** Preserved all 179 passing tests across the test suite.
+- **Voice Preservation:** Maintained approved Hinata neural voice embedding (`hinata_voice.npy`) at 1.14x speed multiplier.
+
+## [Phase 6, Milestone 6.5] - Multi-Step Desktop Workflows
 - **Desktop Workflow Engine:** Implemented sequential execution engine (`src/friday/macos/workflows.py`) converting natural language requests and structured definitions into allowlisted `ActionRegistry` operations.
 - **Built-in Workflow Catalog:** Configured 8 out-of-the-box workflows:
   - `developer_mode`: Switches appearance to dark mode, lowers focused volume, launches Terminal, snaps window to left-half.

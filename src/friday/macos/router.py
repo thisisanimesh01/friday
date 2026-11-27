@@ -166,6 +166,29 @@ ROUTING_PATTERNS = [
         "capture_screenshot",
         lambda m, text: {"mode": "fullscreen"},
     ),
+    # Milestone 7.1 Active Window Capture
+    (
+        re.compile(r"(?i)\b(?:capture\s+(?:the\s+)?active\s+window|active\s+window\s+(?:screenshot|capture)|active\s+window\s+capture\s+karo)\b"),
+        "capture_screen",
+        lambda m, text: {"mode": "window"},
+    ),
+    # Milestone 7.1 Cancel capture
+    (
+        re.compile(r"(?i)\b(?:stop\s+(?:the\s+)?capture|cancel\s+capture|capture\s+roko)\b"),
+        "cancel_capture",
+        lambda m, text: {},
+    ),
+    # Milestone 7.1 Permission check & display queries
+    (
+        re.compile(r"(?i)\b(?:screen\s+recording\s+permission|check\s+screen\s+permission)\b"),
+        "check_screen_recording_permission",
+        lambda m, text: {},
+    ),
+    (
+        re.compile(r"(?i)\b(?:discover\s+displays|list\s+displays|my\s+screens|screen\s+info)\b"),
+        "discover_displays",
+        lambda m, text: {},
+    ),
     # ── Milestone 6.3 AppleScript & Shortcuts Patterns ─────────────────────────
     # Notification template (e.g., "show notification Hello", "notification dikhao World")
     (
@@ -516,10 +539,27 @@ def format_action_result(action_result: ActionResult) -> str:
             return f"Camera capture error: {data['error']}"
         return f"Photo captured successfully: {data.get('file_path')} (Saved in friday workspace/camera/)."
 
-    if act == "capture_screenshot" and isinstance(data, dict):
+    if act in ("capture_screenshot", "capture_screen") and isinstance(data, dict):
         if "error" in data:
             return f"Screenshot error: {data['error']}"
-        return f"Screenshot captured successfully: {data.get('file_path')} (Saved in friday workspace/screenshots/)."
+        if data.get("status") == "dry_run":
+            return f"{data.get('message', '[DRY-RUN] Preview completed.')}"
+        return f"Screenshot captured successfully ({data.get('mode')}, {data.get('file_size_bytes', 0)} bytes): {data.get('file_path')} (Saved in friday workspace/screenshots/)."
+
+    if act == "check_screen_recording_permission" and isinstance(data, dict):
+        if data.get("granted"):
+            return f"Screen Recording Permission: Active ({data.get('message')})"
+        return f"Screen Recording Permission: Denied. {data.get('guidance')}"
+
+    if act == "discover_displays" and isinstance(data, list):
+        lines = [f"• Display {d['index']}: {d['name']} ({d['resolution']}){' [Main]' if d.get('is_main') else ''}" for d in data]
+        return f"Connected Displays ({len(data)}):\n" + "\n".join(lines)
+
+    if act == "cancel_capture" and isinstance(data, dict):
+        return f"Capture Cancel: {data.get('message')}"
+
+    if act == "get_window_geometry" and isinstance(data, dict):
+        return f"Frontmost Window: {data.get('app_name')} - '{data.get('window_title')}' [{data.get('width')}x{data.get('height')} at ({data.get('x')}, {data.get('y')})]"
 
     if act == "run_script_template" and isinstance(data, dict):
         if "error" in data:
